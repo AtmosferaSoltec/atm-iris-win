@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Signed-in top bar (IRIS_SPEC §6.2), drawn in the window title bar:
+    [‹ Inicio] · wordmark · | title / subtitle · ··· · clock · TV chip · account · caption buttons.
+-->
+<UserControl
+    x:Class="Iris.Shell.AppTopBar"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:Iris.DesignSystem.Controls"
+    xmlns:design="using:Iris.DesignSystem"
+    Height="{StaticResource IrisTopBarHeight}"
+    IsTabStop="False">
+
+    <Grid
+        x:Name="Bar"
+        Padding="{StaticResource IrisTopBarPadding}"
+        Background="Transparent"
+        ColumnSpacing="{StaticResource IrisSpacingMd}">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition x:Name="CaptionColumn" Width="140" />
+        </Grid.ColumnDefinitions>
+
+        <Button
+            x:Name="BackButton"
+            VerticalAlignment="Center"
+            AutomationProperties.Name="Inicio"
+            Command="{x:Bind BackCommand, Mode=OneWay}"
+            Style="{StaticResource IrisPillButtonStyle}"
+            ToolTipService.ToolTip="Volver al Inicio"
+            Visibility="Collapsed">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+                <FontIcon
+                    FontSize="{StaticResource IrisCaptionFontSize}"
+                    Glyph="&#xE76B;"
+                    Style="{StaticResource IrisIconStyle}" />
+                <TextBlock Text="Inicio" />
+            </StackPanel>
+        </Button>
+
+        <controls:IrisWordmark
+            Grid.Column="1"
+            VerticalAlignment="Center"
+            MarkSize="{StaticResource IrisWordmarkConsoleSize}" />
+
+        <Rectangle
+            x:Name="TitleSeparator"
+            Grid.Column="2"
+            Style="{StaticResource IrisVerticalSeparatorStyle}"
+            Visibility="Collapsed" />
+        <StackPanel
+            x:Name="TitleStack"
+            Grid.Column="3"
+            VerticalAlignment="Center"
+            Spacing="2"
+            Visibility="Collapsed">
+            <TextBlock
+                x:Name="TitleText"
+                Style="{StaticResource IrisBodyEmphasizedTextStyle}"
+                TextWrapping="NoWrap" />
+            <TextBlock
+                x:Name="SubtitleText"
+                Style="{StaticResource IrisCaptionTextStyle}"
+                TextWrapping="NoWrap"
+                Visibility="Collapsed" />
+        </StackPanel>
+
+        <TextBlock
+            Grid.Column="5"
+            VerticalAlignment="Center"
+            AutomationProperties.Name="Hora"
+            Style="{StaticResource IrisClockTextStyle}"
+            Text="{x:Bind ViewModel.ClockText, Mode=OneWay}" />
+
+        <Border
+            x:Name="DisplayChip"
+            Grid.Column="6"
+            Padding="12,6,14,6"
+            VerticalAlignment="Center"
+            Style="{StaticResource IrisGlassCapsuleStyle}"
+            ToolTipService.ToolTip="Pantalla del TV">
+            <StackPanel Orientation="Horizontal" Spacing="10">
+                <FontIcon
+                    VerticalAlignment="Center"
+                    Foreground="{x:Bind design:IrisTheme.DisplayStatusBrush(ViewModel.IsDisplayConnected), Mode=OneWay}"
+                    Glyph="&#xE7F4;"
+                    Style="{StaticResource IrisIconStyle}" />
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock
+                        FontWeight="SemiBold"
+                        Foreground="{StaticResource IrisTextPrimaryBrush}"
+                        Style="{StaticResource IrisCaptionTextStyle}"
+                        Text="{x:Bind ViewModel.DisplayTitle, Mode=OneWay}" />
+                    <TextBlock Style="{StaticResource IrisCaptionTextStyle}" Text="{x:Bind ViewModel.DisplayDetail, Mode=OneWay}" />
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <Button
+            x:Name="AccountButton"
+            Grid.Column="7"
+            Width="{StaticResource IrisAvatarSize}"
+            Height="{StaticResource IrisAvatarSize}"
+            Padding="0"
+            VerticalAlignment="Center"
+            AutomationProperties.Name="Cuenta"
+            Background="{StaticResource IrisAccentGradientBrush}"
+            BorderBrush="{StaticResource IrisPrimaryButtonOverlayBrush}"
+            BorderThickness="{StaticResource IrisHairline}"
+            CornerRadius="{StaticResource IrisRadiusCapsuleAvatar}"
+            FontWeight="Bold"
+            Foreground="{StaticResource IrisTextInverseBrush}"
+            Style="{StaticResource IrisButtonBaseStyle}"
+            ToolTipService.ToolTip="Cuenta">
+            <TextBlock FontSize="{StaticResource IrisCalloutFontSize}" Text="{x:Bind ViewModel.AccountInitials, Mode=OneWay}" />
+            <Button.Flyout>
+                <MenuFlyout Placement="BottomEdgeAlignedRight">
+                    <MenuFlyoutItem IsEnabled="False" Text="{x:Bind ViewModel.ChurchName, Mode=OneWay}">
+                        <MenuFlyoutItem.Icon>
+                            <FontIcon Glyph="&#xE825;" />
+                        </MenuFlyoutItem.Icon>
+                    </MenuFlyoutItem>
+                    <MenuFlyoutSeparator />
+                    <MenuFlyoutItem
+                        Command="{x:Bind ViewModel.SignOutCommand}"
+                        Foreground="{StaticResource IrisDangerBrush}"
+                        Text="Cerrar sesión">
+                        <MenuFlyoutItem.Icon>
+                            <FontIcon Foreground="{StaticResource IrisDangerBrush}" Glyph="&#xF3B1;" />
+                        </MenuFlyoutItem.Icon>
+                    </MenuFlyoutItem>
+                </MenuFlyout>
+            </Button.Flyout>
+        </Button>
+    </Grid>
+</UserControl>

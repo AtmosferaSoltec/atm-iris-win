@@ -1,0 +1,498 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--  Iris text, button and surface styles (IRIS_SPEC §4.3, §5.4, §5.6). Depends on Tokens.xaml.  -->
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--  ===== Typography =====  -->
+    <Style x:Key="IrisBaseTextStyle" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource IrisSansFontFamily}" />
+        <Setter Property="Foreground" Value="{StaticResource IrisTextPrimaryBrush}" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+        <Setter Property="TextLineBounds" Value="Full" />
+        <Setter Property="OpticalMarginAlignment" Value="TrimSideBearings" />
+    </Style>
+
+    <Style x:Key="IrisSerifBaseTextStyle" BasedOn="{StaticResource IrisBaseTextStyle}" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource IrisSerifDisplayFontFamily}" />
+        <Setter Property="FontWeight" Value="Medium" />
+        <Setter Property="CharacterSpacing" Value="{StaticResource IrisTrackingTight}" />
+    </Style>
+
+    <Style x:Key="IrisDisplayTextStyle" BasedOn="{StaticResource IrisSerifBaseTextStyle}" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="{StaticResource IrisDisplayFontSize}" />
+        <Setter Property="LineHeight" Value="60" />
+    </Style>
+
+    <Style x:Key="IrisHeadlineTextStyle" BasedOn="{StaticResource IrisSerifBaseTextStyle}" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="{StaticResource IrisHeadlineFontSize}" />
+    </Style>
+
+    <Style x:Key="IrisTitleTextStyle" BasedOn="{StaticResource IrisSerifBaseTextStyle}" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="{StaticResource IrisTitleFontSize}" />
+    </Style>
+
+    <Style x:Key="IrisSubtitleTextStyle" BasedOn="{StaticResource IrisBaseTextStyle}" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="{StaticResource IrisSubtitleFontSize}" />
+        <Setter Property="Foreground" Value="{StaticResource IrisTextSecondaryBrush}" />
+    </Style>
+
+    <Style x:Key="IrisBodyTextStyle" BasedOn="{StaticResource IrisBaseTextStyle}" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="{StaticResource IrisBodyFontSize}" />
+    </Style>
+
+    <Style x:Key="IrisBodyEmphasizedTextStyle" BasedOn="{StaticResource IrisBodyTextStyle}" TargetType="TextBlock">
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+
+    <Style x:Key="IrisCalloutTextStyle" BasedOn="{StaticResource IrisBaseTextStyle}" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="{StaticResource IrisCalloutFontSize}" />
+        <Setter Property="Foreground" Value="{StaticResource IrisTextSecondaryBrush}" />
+    </Style>
+
+    <Style x:Key="IrisCalloutEmphasizedTextStyle" BasedOn="{StaticResource IrisBaseTextStyle}" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="{StaticResource IrisCalloutFontSize}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+
+    <Style x:Key="IrisLabelTextStyle" BasedOn="{StaticResource IrisBaseTextStyle}" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="{StaticResource IrisLabelFontSize}" />
+        <Setter Property="FontWeight" Value="Medium" />
+        <Setter Property="Foreground" Value="{StaticResource IrisTextSecondaryBrush}" />
+    </Style>
+
+    <Style x:Key="IrisCaptionTextStyle" BasedOn="{StaticResource IrisBaseTextStyle}" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="{StaticResource IrisCaptionFontSize}" />
+        <Setter Property="FontWeight" Value="Medium" />
+        <Setter Property="Foreground" Value="{StaticResource IrisTextTertiaryBrush}" />
+    </Style>
+
+    <Style x:Key="IrisOverlineTextStyle" BasedOn="{StaticResource IrisBaseTextStyle}" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="{StaticResource IrisOverlineFontSize}" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="CharacterSpacing" Value="{StaticResource IrisTrackingOverline}" />
+        <Setter Property="Foreground" Value="{StaticResource IrisTextTertiaryBrush}" />
+        <Setter Property="TextWrapping" Value="NoWrap" />
+    </Style>
+
+    <!--  Clock / durations / indices: Segoe UI digits are tabular by default  -->
+    <Style x:Key="IrisClockTextStyle" BasedOn="{StaticResource IrisBaseTextStyle}" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource IrisSansDisplayFontFamily}" />
+        <Setter Property="FontSize" Value="{StaticResource IrisClockFontSize}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="TextWrapping" Value="NoWrap" />
+    </Style>
+
+    <Style x:Key="IrisNumberTextStyle" BasedOn="{StaticResource IrisCaptionTextStyle}" TargetType="TextBlock">
+        <Setter Property="TextWrapping" Value="NoWrap" />
+    </Style>
+
+    <Style x:Key="IrisGreetingTextStyle" BasedOn="{StaticResource IrisSerifBaseTextStyle}" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="{StaticResource IrisGreetingFontSize}" />
+    </Style>
+
+    <Style x:Key="IrisHeroTitleTextStyle" BasedOn="{StaticResource IrisSerifBaseTextStyle}" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="{StaticResource IrisHeroTitleFontSize}" />
+        <Setter Property="TextWrapping" Value="NoWrap" />
+        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+
+    <!--  title3 rounded: metrics in Tiempos  -->
+    <Style x:Key="IrisMetricTextStyle" BasedOn="{StaticResource IrisClockTextStyle}" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="{StaticResource IrisMetricFontSize}" />
+    </Style>
+
+    <!--  title2 rounded: running block clock  -->
+    <Style x:Key="IrisTimerClockTextStyle" BasedOn="{StaticResource IrisClockTextStyle}" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="{StaticResource IrisTimerClockFontSize}" />
+    </Style>
+
+    <Style x:Key="IrisIconStyle" TargetType="FontIcon">
+        <Setter Property="FontFamily" Value="{StaticResource IrisIconFontFamily}" />
+        <Setter Property="FontSize" Value="{StaticResource IrisIconFontSize}" />
+    </Style>
+
+    <!--  ===== Surfaces =====  -->
+    <Style x:Key="IrisSurfaceStyle" TargetType="Border">
+        <Setter Property="Background" Value="{StaticResource IrisPanelMaterialBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource IrisSurfaceBorderBrush}" />
+        <Setter Property="BorderThickness" Value="{StaticResource IrisHairline}" />
+        <Setter Property="CornerRadius" Value="{StaticResource IrisRadiusXxl}" />
+    </Style>
+
+    <Style x:Key="IrisConsoleSurfaceStyle" BasedOn="{StaticResource IrisSurfaceStyle}" TargetType="Border">
+        <Setter Property="CornerRadius" Value="{StaticResource IrisRadiusXl}" />
+    </Style>
+
+    <Style x:Key="IrisGlassCapsuleStyle" TargetType="Border">
+        <Setter Property="Background" Value="{StaticResource IrisGlassBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource IrisStrokeBrush}" />
+        <Setter Property="BorderThickness" Value="{StaticResource IrisHairline}" />
+        <Setter Property="CornerRadius" Value="{StaticResource IrisRadiusCapsule}" />
+    </Style>
+
+    <Style x:Key="IrisDividerStyle" TargetType="Rectangle">
+        <Setter Property="Height" Value="{StaticResource IrisHairlineSize}" />
+        <Setter Property="Fill" Value="{StaticResource IrisStrokeBrush}" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+    </Style>
+
+    <Style x:Key="IrisStatusDotStyle" TargetType="Ellipse">
+        <Setter Property="Width" Value="{StaticResource IrisStatusDotSize}" />
+        <Setter Property="Height" Value="{StaticResource IrisStatusDotSize}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <Style x:Key="IrisVerticalSeparatorStyle" TargetType="Rectangle">
+        <Setter Property="Width" Value="{StaticResource IrisHairlineSize}" />
+        <Setter Property="Height" Value="{StaticResource IrisSeparatorHeight}" />
+        <Setter Property="Fill" Value="{StaticResource IrisStrokeBrush}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <!--  ===== Buttons =====  -->
+
+    <!--  Chrome button: background + 1px border + hover veil, scales to 0.97 when pressed.  -->
+    <ControlTemplate x:Key="IrisChromeButtonTemplate" TargetType="Button">
+        <Grid
+            x:Name="Root"
+            Background="Transparent"
+            RenderTransformOrigin="0.5,0.5">
+            <Grid.RenderTransform>
+                <ScaleTransform x:Name="Scale" />
+            </Grid.RenderTransform>
+            <VisualStateManager.VisualStateGroups>
+                <VisualStateGroup x:Name="CommonStates">
+                    <VisualState x:Name="Normal" />
+                    <VisualState x:Name="PointerOver">
+                        <VisualState.Setters>
+                            <Setter Target="Veil.Opacity" Value="1" />
+                        </VisualState.Setters>
+                    </VisualState>
+                    <VisualState x:Name="Pressed">
+                        <Storyboard>
+                            <DoubleAnimation Storyboard.TargetName="Scale" Storyboard.TargetProperty="ScaleX" To="0.97" Duration="0:0:0.1" />
+                            <DoubleAnimation Storyboard.TargetName="Scale" Storyboard.TargetProperty="ScaleY" To="0.97" Duration="0:0:0.1" />
+                        </Storyboard>
+                        <VisualState.Setters>
+                            <Setter Target="Veil.Opacity" Value="1" />
+                            <Setter Target="Root.Opacity" Value="{StaticResource IrisPressedOpacity}" />
+                        </VisualState.Setters>
+                    </VisualState>
+                    <VisualState x:Name="Disabled">
+                        <VisualState.Setters>
+                            <Setter Target="Root.Opacity" Value="{StaticResource IrisDisabledOpacity}" />
+                        </VisualState.Setters>
+                    </VisualState>
+                </VisualStateGroup>
+            </VisualStateManager.VisualStateGroups>
+            <Border
+                Background="{TemplateBinding Background}"
+                BorderBrush="{TemplateBinding BorderBrush}"
+                BorderThickness="{TemplateBinding BorderThickness}"
+                CornerRadius="{TemplateBinding CornerRadius}" />
+            <Border
+                x:Name="Veil"
+                Background="{StaticResource IrisGlassHoverBrush}"
+                CornerRadius="{TemplateBinding CornerRadius}"
+                Opacity="0" />
+            <ContentPresenter
+                x:Name="ContentPresenter"
+                Padding="{TemplateBinding Padding}"
+                HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                AutomationProperties.AccessibilityView="Raw"
+                Content="{TemplateBinding Content}"
+                ContentTemplate="{TemplateBinding ContentTemplate}"
+                ContentTransitions="{TemplateBinding ContentTransitions}"
+                FontFamily="{TemplateBinding FontFamily}"
+                FontSize="{TemplateBinding FontSize}"
+                FontWeight="{TemplateBinding FontWeight}"
+                Foreground="{TemplateBinding Foreground}" />
+        </Grid>
+    </ControlTemplate>
+
+    <!--  Plain button: no chrome, scale 0.97 and opacity 85% when pressed (irisPressable).  -->
+    <ControlTemplate x:Key="IrisPlainButtonTemplate" TargetType="Button">
+        <Grid
+            x:Name="Root"
+            Background="Transparent"
+            RenderTransformOrigin="0.5,0.5">
+            <Grid.RenderTransform>
+                <ScaleTransform x:Name="Scale" />
+            </Grid.RenderTransform>
+            <VisualStateManager.VisualStateGroups>
+                <VisualStateGroup x:Name="CommonStates">
+                    <VisualState x:Name="Normal" />
+                    <VisualState x:Name="PointerOver">
+                        <VisualState.Setters>
+                            <Setter Target="ContentPresenter.Foreground" Value="{StaticResource IrisTextPrimaryBrush}" />
+                        </VisualState.Setters>
+                    </VisualState>
+                    <VisualState x:Name="Pressed">
+                        <Storyboard>
+                            <DoubleAnimation Storyboard.TargetName="Scale" Storyboard.TargetProperty="ScaleX" To="0.97" Duration="0:0:0.1" />
+                            <DoubleAnimation Storyboard.TargetName="Scale" Storyboard.TargetProperty="ScaleY" To="0.97" Duration="0:0:0.1" />
+                        </Storyboard>
+                        <VisualState.Setters>
+                            <Setter Target="Root.Opacity" Value="{StaticResource IrisPressedOpacity}" />
+                            <Setter Target="ContentPresenter.Foreground" Value="{StaticResource IrisTextPrimaryBrush}" />
+                        </VisualState.Setters>
+                    </VisualState>
+                    <VisualState x:Name="Disabled">
+                        <VisualState.Setters>
+                            <Setter Target="Root.Opacity" Value="{StaticResource IrisDisabledOpacity}" />
+                        </VisualState.Setters>
+                    </VisualState>
+                </VisualStateGroup>
+            </VisualStateManager.VisualStateGroups>
+            <ContentPresenter
+                x:Name="ContentPresenter"
+                Padding="{TemplateBinding Padding}"
+                HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                Background="{TemplateBinding Background}"
+                BorderBrush="{TemplateBinding BorderBrush}"
+                BorderThickness="{TemplateBinding BorderThickness}"
+                Content="{TemplateBinding Content}"
+                ContentTemplate="{TemplateBinding ContentTemplate}"
+                CornerRadius="{TemplateBinding CornerRadius}"
+                FontFamily="{TemplateBinding FontFamily}"
+                FontSize="{TemplateBinding FontSize}"
+                FontWeight="{TemplateBinding FontWeight}"
+                Foreground="{TemplateBinding Foreground}" />
+        </Grid>
+    </ControlTemplate>
+
+    <Style x:Key="IrisButtonBaseStyle" TargetType="Button">
+        <Setter Property="FontFamily" Value="{StaticResource IrisSansFontFamily}" />
+        <Setter Property="FontSize" Value="{StaticResource IrisBodyFontSize}" />
+        <Setter Property="Foreground" Value="{StaticResource IrisTextPrimaryBrush}" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="UseSystemFocusVisuals" Value="True" />
+        <Setter Property="FocusVisualMargin" Value="-3" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Template" Value="{StaticResource IrisChromeButtonTemplate}" />
+    </Style>
+
+    <!--  irisPrimary: full-width accent capsule  -->
+    <Style x:Key="IrisPrimaryButtonStyle" BasedOn="{StaticResource IrisButtonBaseStyle}" TargetType="Button">
+        <Setter Property="Background" Value="{StaticResource IrisAccentGradientBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource IrisPrimaryButtonOverlayBrush}" />
+        <Setter Property="BorderThickness" Value="{StaticResource IrisHairline}" />
+        <Setter Property="Foreground" Value="{StaticResource IrisTextInverseBrush}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Height" Value="{StaticResource IrisControlHeight}" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="CornerRadius" Value="{StaticResource IrisRadiusCapsule}" />
+        <Setter Property="Padding" Value="{StaticResource IrisPillPadding}" />
+    </Style>
+
+    <!--  Destructive confirmation  -->
+    <Style x:Key="IrisDangerButtonStyle" BasedOn="{StaticResource IrisPrimaryButtonStyle}" TargetType="Button">
+        <Setter Property="Background" Value="{StaticResource IrisDangerBrush}" />
+    </Style>
+
+    <!--  irisGlass: full-width glass capsule  -->
+    <Style x:Key="IrisGlassButtonStyle" BasedOn="{StaticResource IrisButtonBaseStyle}" TargetType="Button">
+        <Setter Property="Background" Value="{StaticResource IrisGlassBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource IrisStrokeBrush}" />
+        <Setter Property="BorderThickness" Value="{StaticResource IrisHairline}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Height" Value="{StaticResource IrisControlHeight}" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="CornerRadius" Value="{StaticResource IrisRadiusCapsule}" />
+        <Setter Property="Padding" Value="{StaticResource IrisPillPadding}" />
+    </Style>
+
+    <!--  irisPill: small glass capsule  -->
+    <Style x:Key="IrisPillButtonStyle" BasedOn="{StaticResource IrisButtonBaseStyle}" TargetType="Button">
+        <Setter Property="Background" Value="{StaticResource IrisGlassBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource IrisStrokeBrush}" />
+        <Setter Property="BorderThickness" Value="{StaticResource IrisHairline}" />
+        <Setter Property="FontSize" Value="{StaticResource IrisLabelFontSize}" />
+        <Setter Property="FontWeight" Value="Medium" />
+        <Setter Property="Height" Value="{StaticResource IrisPillHeight}" />
+        <Setter Property="CornerRadius" Value="{StaticResource IrisRadiusCapsulePill}" />
+        <Setter Property="Padding" Value="{StaticResource IrisPillPadding}" />
+    </Style>
+
+    <!--  irisIcon: 36px glass circle with a glyph  -->
+    <Style x:Key="IrisIconButtonStyle" BasedOn="{StaticResource IrisButtonBaseStyle}" TargetType="Button">
+        <Setter Property="Background" Value="{StaticResource IrisGlassBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource IrisStrokeBrush}" />
+        <Setter Property="BorderThickness" Value="{StaticResource IrisHairline}" />
+        <Setter Property="Width" Value="{StaticResource IrisIconButtonSize}" />
+        <Setter Property="Height" Value="{StaticResource IrisIconButtonSize}" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="FontSize" Value="{StaticResource IrisIconSmallFontSize}" />
+        <Setter Property="CornerRadius" Value="{StaticResource IrisRadiusCapsule}" />
+    </Style>
+
+    <!--  Bare icon button (row trash, modal close inside panels)  -->
+    <Style x:Key="IrisSubtleIconButtonStyle" BasedOn="{StaticResource IrisIconButtonStyle}" TargetType="Button">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Foreground" Value="{StaticResource IrisTextSecondaryBrush}" />
+    </Style>
+
+    <!--  irisLink: text only, secondary -> primary  -->
+    <Style x:Key="IrisLinkButtonStyle" BasedOn="{StaticResource IrisButtonBaseStyle}" TargetType="Button">
+        <Setter Property="Template" Value="{StaticResource IrisPlainButtonTemplate}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{StaticResource IrisTextSecondaryBrush}" />
+        <Setter Property="FontSize" Value="{StaticResource IrisCalloutFontSize}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Padding" Value="0" />
+    </Style>
+
+    <!--  irisPressable: free content, no chrome  -->
+    <Style x:Key="IrisPressableButtonStyle" BasedOn="{StaticResource IrisButtonBaseStyle}" TargetType="Button">
+        <Setter Property="Template" Value="{StaticResource IrisPlainButtonTemplate}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="VerticalContentAlignment" Value="Stretch" />
+    </Style>
+
+    <!--  Selectable cell (Bible books / numbers): surface fill, hover raises  -->
+    <Style x:Key="IrisCellButtonStyle" BasedOn="{StaticResource IrisButtonBaseStyle}" TargetType="Button">
+        <Setter Property="Background" Value="{StaticResource IrisSurfaceBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource IrisStrokeBrush}" />
+        <Setter Property="BorderThickness" Value="{StaticResource IrisHairline}" />
+        <Setter Property="CornerRadius" Value="{StaticResource IrisRadiusMd}" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="VerticalAlignment" Value="Stretch" />
+        <Setter Property="Padding" Value="{StaticResource IrisPaddingSm}" />
+    </Style>
+
+    <!--  irisIcon(isActive): toggle; active = coral glass with inverse glyph  -->
+    <Style x:Key="IrisIconToggleButtonStyle" TargetType="ToggleButton">
+        <Setter Property="Background" Value="{StaticResource IrisGlassBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource IrisStrokeBrush}" />
+        <Setter Property="BorderThickness" Value="{StaticResource IrisHairline}" />
+        <Setter Property="Foreground" Value="{StaticResource IrisTextPrimaryBrush}" />
+        <Setter Property="Width" Value="{StaticResource IrisIconButtonSize}" />
+        <Setter Property="Height" Value="{StaticResource IrisIconButtonSize}" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="FontSize" Value="{StaticResource IrisIconSmallFontSize}" />
+        <Setter Property="CornerRadius" Value="{StaticResource IrisRadiusCapsule}" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="UseSystemFocusVisuals" Value="True" />
+        <Setter Property="FocusVisualMargin" Value="-3" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Grid
+                        x:Name="Root"
+                        Background="Transparent"
+                        RenderTransformOrigin="0.5,0.5">
+                        <Grid.RenderTransform>
+                            <ScaleTransform x:Name="Scale" />
+                        </Grid.RenderTransform>
+                        <VisualStateManager.VisualStateGroups>
+                            <VisualStateGroup x:Name="CommonStates">
+                                <VisualState x:Name="Normal" />
+                                <VisualState x:Name="PointerOver">
+                                    <VisualState.Setters>
+                                        <Setter Target="Veil.Opacity" Value="1" />
+                                    </VisualState.Setters>
+                                </VisualState>
+                                <VisualState x:Name="Pressed">
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="Scale" Storyboard.TargetProperty="ScaleX" To="0.97" Duration="0:0:0.1" />
+                                        <DoubleAnimation Storyboard.TargetName="Scale" Storyboard.TargetProperty="ScaleY" To="0.97" Duration="0:0:0.1" />
+                                    </Storyboard>
+                                    <VisualState.Setters>
+                                        <Setter Target="Veil.Opacity" Value="1" />
+                                    </VisualState.Setters>
+                                </VisualState>
+                                <VisualState x:Name="Disabled">
+                                    <VisualState.Setters>
+                                        <Setter Target="Root.Opacity" Value="{StaticResource IrisDisabledOpacity}" />
+                                    </VisualState.Setters>
+                                </VisualState>
+                                <VisualState x:Name="Checked">
+                                    <VisualState.Setters>
+                                        <Setter Target="Chrome.Background" Value="{StaticResource IrisGlassActiveBrush}" />
+                                        <Setter Target="ContentPresenter.Foreground" Value="{StaticResource IrisTextInverseBrush}" />
+                                    </VisualState.Setters>
+                                </VisualState>
+                                <VisualState x:Name="CheckedPointerOver">
+                                    <VisualState.Setters>
+                                        <Setter Target="Chrome.Background" Value="{StaticResource IrisGlassActiveBrush}" />
+                                        <Setter Target="ContentPresenter.Foreground" Value="{StaticResource IrisTextInverseBrush}" />
+                                        <Setter Target="Veil.Opacity" Value="1" />
+                                    </VisualState.Setters>
+                                </VisualState>
+                                <VisualState x:Name="CheckedPressed">
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="Scale" Storyboard.TargetProperty="ScaleX" To="0.97" Duration="0:0:0.1" />
+                                        <DoubleAnimation Storyboard.TargetName="Scale" Storyboard.TargetProperty="ScaleY" To="0.97" Duration="0:0:0.1" />
+                                    </Storyboard>
+                                    <VisualState.Setters>
+                                        <Setter Target="Chrome.Background" Value="{StaticResource IrisGlassActiveBrush}" />
+                                        <Setter Target="ContentPresenter.Foreground" Value="{StaticResource IrisTextInverseBrush}" />
+                                    </VisualState.Setters>
+                                </VisualState>
+                                <VisualState x:Name="CheckedDisabled">
+                                    <VisualState.Setters>
+                                        <Setter Target="Chrome.Background" Value="{StaticResource IrisGlassActiveBrush}" />
+                                        <Setter Target="ContentPresenter.Foreground" Value="{StaticResource IrisTextInverseBrush}" />
+                                        <Setter Target="Root.Opacity" Value="{StaticResource IrisDisabledOpacity}" />
+                                    </VisualState.Setters>
+                                </VisualState>
+                                <VisualState x:Name="Indeterminate" />
+                                <VisualState x:Name="IndeterminatePointerOver" />
+                                <VisualState x:Name="IndeterminatePressed" />
+                                <VisualState x:Name="IndeterminateDisabled" />
+                            </VisualStateGroup>
+                        </VisualStateManager.VisualStateGroups>
+                        <Border
+                            x:Name="Chrome"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="{TemplateBinding CornerRadius}" />
+                        <Border
+                            x:Name="Veil"
+                            Background="{StaticResource IrisGlassHoverBrush}"
+                            CornerRadius="{TemplateBinding CornerRadius}"
+                            Opacity="0" />
+                        <ContentPresenter
+                            x:Name="ContentPresenter"
+                            Padding="{TemplateBinding Padding}"
+                            HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                            VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                            AutomationProperties.AccessibilityView="Raw"
+                            Content="{TemplateBinding Content}"
+                            ContentTemplate="{TemplateBinding ContentTemplate}"
+                            FontSize="{TemplateBinding FontSize}"
+                            Foreground="{TemplateBinding Foreground}" />
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!--  ===== Flyouts / tooltips =====  -->
+    <Style x:Key="IrisFlyoutPresenterStyle" TargetType="FlyoutPresenter">
+        <Setter Property="Background" Value="{StaticResource IrisPanelMaterialBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource IrisSurfaceBorderBrush}" />
+        <Setter Property="BorderThickness" Value="{StaticResource IrisHairline}" />
+        <Setter Property="CornerRadius" Value="{StaticResource IrisRadiusLg}" />
+        <Setter Property="Padding" Value="{StaticResource IrisPaddingMd}" />
+    </Style>
+
+    <!--  Service list rows: no system selection chrome, rows draw their own state  -->
+    <Style x:Key="IrisListRowContainerStyle" TargetType="ListViewItem">
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Margin" Value="0,0,0,2" />
+        <Setter Property="MinHeight" Value="0" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="CornerRadius" Value="{StaticResource IrisRadiusMd}" />
+    </Style>
+</ResourceDictionary>

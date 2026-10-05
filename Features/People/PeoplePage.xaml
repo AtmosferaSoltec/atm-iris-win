@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--  Personas (IRIS_SPEC §6.7): add field, alphabetical list with block counts, rename and delete.  -->
+<Page
+    x:Class="Iris.Features.People.PeoplePage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:Iris.DesignSystem.Controls"
+    xmlns:people="using:Iris.Features.People"
+    xmlns:shell="using:Iris.Shell"
+    Background="Transparent">
+
+    <Page.Resources>
+        <DataTemplate x:Key="PersonRowTemplate" x:DataType="people:PersonRowViewModel">
+            <people:PersonRow Row="{x:Bind}" />
+        </DataTemplate>
+    </Page.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="{StaticResource IrisTopBarRowHeight}" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <shell:AppTopBar Title="Personas" BackCommand="{x:Bind ViewModel.GoHomeCommand}" />
+
+        <ScrollViewer Grid.Row="1">
+            <Border
+                MaxWidth="{StaticResource IrisSettingsColumnWidth}"
+                Margin="{StaticResource IrisPagePadding}"
+                Padding="{StaticResource IrisPaddingXl}"
+                VerticalAlignment="Top"
+                Style="{StaticResource IrisSurfaceStyle}">
+                <StackPanel Spacing="{StaticResource IrisSpacingLg}">
+                    <StackPanel Spacing="{StaticResource IrisSpacingXs}">
+                        <TextBlock
+                            AutomationProperties.HeadingLevel="Level1"
+                            Style="{StaticResource IrisHeadlineTextStyle}"
+                            Text="Personas" />
+                        <TextBlock Style="{StaticResource IrisCalloutTextStyle}" Text="Quienes dirigen los bloques de tus servicios." />
+                    </StackPanel>
+
+                    <controls:IrisBanner Kind="Error" Message="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}" />
+
+                    <!--  Add: the pill lines up with the center of the input  -->
+                    <Grid ColumnSpacing="{StaticResource IrisSpacingSm}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <controls:IrisTextField
+                            x:Name="NewNameField"
+                            Glyph="&#xE8FA;"
+                            Kind="Name"
+                            Label="Nueva persona"
+                            Placeholder="Nombre y apellido"
+                            Submitted="OnNewNameSubmitted"
+                            ErrorMessage="{x:Bind ViewModel.NewNameError, Mode=OneWay}"
+                            Text="{x:Bind ViewModel.NewName, Mode=TwoWay}" />
+                        <Button
+                            x:Name="AddButton"
+                            Grid.Column="1"
+                            Margin="{StaticResource IrisFieldPillOffset}"
+                            VerticalAlignment="Top"
+                            Command="{x:Bind ViewModel.AddCommand}"
+                            Style="{StaticResource IrisPillButtonStyle}">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <FontIcon
+                                    FontSize="{StaticResource IrisCaptionFontSize}"
+                                    Glyph="&#xE710;"
+                                    Style="{StaticResource IrisIconStyle}" />
+                                <TextBlock Text="Agregar" />
+                            </StackPanel>
+                        </Button>
+                    </Grid>
+
+                    <Grid>
+                        <ItemsRepeater ItemTemplate="{StaticResource PersonRowTemplate}" ItemsSource="{x:Bind ViewModel.Rows}" />
+
+                        <StackPanel
+                            Padding="{StaticResource IrisPaddingLg}"
+                            HorizontalAlignment="Center"
+                            Spacing="{StaticResource IrisSpacingXs}"
+                            Visibility="{x:Bind ViewModel.IsEmpty, Mode=OneWay}">
+                            <FontIcon
+                                FontSize="{StaticResource IrisIconLargeFontSize}"
+                                Foreground="{StaticResource IrisTextTertiaryBrush}"
+                                Glyph="&#xE716;"
+                                Style="{StaticResource IrisIconStyle}" />
+                            <TextBlock
+                                HorizontalAlignment="Center"
+                                Style="{StaticResource IrisBodyEmphasizedTextStyle}"
+                                Text="Aún no hay personas" />
+                            <TextBlock
+                                HorizontalAlignment="Center"
+                                Style="{StaticResource IrisCalloutTextStyle}"
+                                Text="Agrega a quienes dirigen la bienvenida, las alabanzas o la prédica."
+                                TextAlignment="Center" />
+                        </StackPanel>
+                        <ProgressRing
+                            Width="28"
+                            Height="28"
+                            IsActive="{x:Bind ViewModel.IsLoading, Mode=OneWay}" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+        </ScrollViewer>
+
+        <!--  Rename  -->
+        <controls:IrisModal
+            Grid.RowSpan="2"
+            CloseCommand="{x:Bind ViewModel.CancelRenameCommand}"
+            IsOpen="{x:Bind ViewModel.IsRenaming, Mode=OneWay}"
+            PanelWidth="{StaticResource IrisConfirmModalWidth}">
+            <StackPanel Padding="{StaticResource IrisPaddingXl}" Spacing="{StaticResource IrisSpacingLg}">
+                <TextBlock
+                    AutomationProperties.HeadingLevel="Level2"
+                    Style="{StaticResource IrisTitleTextStyle}"
+                    Text="Renombrar" />
+                <controls:IrisBanner Kind="Error" Message="{x:Bind ViewModel.RenameError, Mode=OneWay}" />
+                <controls:IrisTextField
+                    Glyph="&#xE77B;"
+                    Kind="Name"
+                    Placeholder="Nombre y apellido"
+                    Submitted="OnRenameSubmitted"
+                    Text="{x:Bind ViewModel.RenameDraft, Mode=TwoWay}" />
+                <Grid ColumnSpacing="{StaticResource IrisSpacingSm}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Button
+                        Command="{x:Bind ViewModel.CancelRenameCommand}"
+                        Content="Cancelar"
+                        Style="{StaticResource IrisGlassButtonStyle}" />
+                    <Button
+                        Grid.Column="1"
+                        Command="{x:Bind ViewModel.ConfirmRenameCommand}"
+                        Content="Guardar"
+                        Style="{StaticResource IrisPrimaryButtonStyle}" />
+                </Grid>
+            </StackPanel>
+        </controls:IrisModal>
+
+        <!--  Delete  -->
+        <controls:IrisModal
+            Grid.RowSpan="2"
+            CloseCommand="{x:Bind ViewModel.CancelDeleteCommand}"
+            IsOpen="{x:Bind ViewModel.IsConfirmingDelete, Mode=OneWay}"
+            PanelWidth="{StaticResource IrisConfirmModalWidth}">
+            <StackPanel Padding="{StaticResource IrisPaddingXl}" Spacing="{StaticResource IrisSpacingLg}">
+                <StackPanel Spacing="{StaticResource IrisSpacingXs}">
+                    <TextBlock
+                        AutomationProperties.HeadingLevel="Level2"
+                        Style="{StaticResource IrisTitleTextStyle}"
+                        Text="{x:Bind ViewModel.DeleteTitle, Mode=OneWay}" />
+                    <TextBlock Style="{StaticResource IrisCalloutTextStyle}" Text="Sus tiempos guardados se conservan." />
+                </StackPanel>
+                <StackPanel Spacing="{StaticResource IrisSpacingSm}">
+                    <Button
+                        Command="{x:Bind ViewModel.ConfirmDeleteCommand}"
+                        Content="Eliminar"
+                        Style="{StaticResource IrisDangerButtonStyle}" />
+                    <Button
+                        Command="{x:Bind ViewModel.CancelDeleteCommand}"
+                        Content="Cancelar"
+                        Style="{StaticResource IrisGlassButtonStyle}" />
+                </StackPanel>
+            </StackPanel>
+        </controls:IrisModal>
+    </Grid>
+</Page>

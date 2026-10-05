@@ -1,0 +1,288 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--  Access screen (IRIS_SPEC §6.1): hero with rotating mini TV + sign in / sign up panel + recovery sheet.  -->
+<Page
+    x:Class="Iris.Features.Auth.AuthPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:Iris.DesignSystem.Controls"
+    xmlns:projection="using:Iris.Shared.Projection"
+    Background="Transparent">
+
+    <Grid>
+        <VisualStateManager.VisualStateGroups>
+            <VisualStateGroup>
+                <VisualState x:Name="Wide">
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="{StaticResource IrisAuthWideBreakpoint}" />
+                    </VisualState.StateTriggers>
+                    <VisualState.Setters>
+                        <Setter Target="LayoutRoot.Padding" Value="{StaticResource IrisAuthPagePadding}" />
+                        <Setter Target="LayoutRoot.MaxWidth" Value="1600" />
+                        <Setter Target="Hero.(Grid.ColumnSpan)" Value="1" />
+                        <Setter Target="Hero.(Grid.RowSpan)" Value="2" />
+                        <Setter Target="Panel.(Grid.Row)" Value="0" />
+                        <Setter Target="Panel.(Grid.RowSpan)" Value="2" />
+                        <Setter Target="Panel.(Grid.Column)" Value="1" />
+                        <Setter Target="Panel.(Grid.ColumnSpan)" Value="1" />
+                        <Setter Target="Panel.Width" Value="{StaticResource IrisAuthPanelWidth}" />
+                        <Setter Target="Panel.VerticalAlignment" Value="Center" />
+                        <Setter Target="HeroTitle.Style" Value="{StaticResource IrisDisplayTextStyle}" />
+                        <Setter Target="HeroContent.(Grid.Row)" Value="2" />
+                        <Setter Target="MiniTv.MaxWidth" Value="{StaticResource IrisMiniTvMaxWidth}" />
+                    </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Narrow" />
+            </VisualStateGroup>
+        </VisualStateManager.VisualStateGroups>
+
+        <ScrollViewer x:Name="Scroller" SizeChanged="OnScrollerSizeChanged">
+            <Grid
+                x:Name="LayoutRoot"
+                MaxWidth="{StaticResource IrisReadableWidth}"
+                Padding="{StaticResource IrisAuthPageCompactPadding}"
+                ColumnSpacing="{StaticResource IrisSpacingXxxl}"
+                RowSpacing="{StaticResource IrisSpacingXl}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <!--  Hero  -->
+                <Grid
+                    x:Name="Hero"
+                    Grid.ColumnSpan="2"
+                    RowSpacing="{StaticResource IrisSpacingLg}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <controls:IrisWordmark HorizontalAlignment="Left" MarkSize="{StaticResource IrisWordmarkAuthSize}" />
+
+                    <StackPanel
+                        x:Name="HeroContent"
+                        Grid.Row="1"
+                        Spacing="{StaticResource IrisSpacingLg}">
+                        <TextBlock
+                            Foreground="{StaticResource IrisAccentGradientBrush}"
+                            Style="{StaticResource IrisOverlineTextStyle}"
+                            Text="PROYECCIÓN PARA IGLESIAS" />
+                        <TextBlock
+                            x:Name="HeroTitle"
+                            AutomationProperties.HeadingLevel="Level1"
+                            Style="{StaticResource IrisHeadlineTextStyle}">
+                            <Run Text="Que cada palabra " /><Run Foreground="{StaticResource IrisAccentGradientBrush}" Text="ilumine" /><Run Text=" el templo." />
+                        </TextBlock>
+                        <TextBlock
+                            MaxWidth="{StaticResource IrisReadableWidth}"
+                            HorizontalAlignment="Left"
+                            Style="{StaticResource IrisSubtitleTextStyle}"
+                            Text="Letras, versículos y multimedia en la pantalla grande. Tú diriges todo desde tu computadora." />
+
+                        <!--  Mini TV: same renderer as the real TV, rotates every 5 s  -->
+                        <Grid
+                            x:Name="MiniTv"
+                            HorizontalAlignment="Stretch"
+                            CornerRadius="{StaticResource IrisRadiusLg}">
+                            <projection:ProjectionCanvas Frame="{x:Bind ViewModel.ShowcaseFrame, Mode=OneWay}" UsesTransitions="True" />
+                            <Border
+                                BorderBrush="{StaticResource IrisStrokeStrongBrush}"
+                                BorderThickness="{StaticResource IrisHairline}"
+                                CornerRadius="{StaticResource IrisRadiusLg}" />
+                            <controls:IrisLiveIndicator Margin="{StaticResource IrisPaddingSm}" Text="EN PANTALLA" />
+                        </Grid>
+                    </StackPanel>
+                </Grid>
+
+                <!--  Sign in / sign up panel  -->
+                <Border
+                    x:Name="Panel"
+                    Grid.Row="1"
+                    Grid.ColumnSpan="2"
+                    Padding="{StaticResource IrisPaddingXl}"
+                    Style="{StaticResource IrisSurfaceStyle}">
+                    <StackPanel Spacing="{StaticResource IrisSpacingLg}">
+                        <StackPanel Spacing="{StaticResource IrisSpacingXs}">
+                            <TextBlock
+                                AutomationProperties.HeadingLevel="Level2"
+                                Style="{StaticResource IrisTitleTextStyle}"
+                                Text="{x:Bind ViewModel.Title, Mode=OneWay}" />
+                            <TextBlock Style="{StaticResource IrisCalloutTextStyle}" Text="{x:Bind ViewModel.Subtitle, Mode=OneWay}" />
+                        </StackPanel>
+
+                        <controls:IrisSegmentedControl Items="{x:Bind ViewModel.Modes}" SelectedIndex="{x:Bind ViewModel.ModeIndex, Mode=TwoWay}" />
+
+                        <controls:IrisBanner Message="{x:Bind ViewModel.BannerMessage, Mode=OneWay}" />
+
+                        <StackPanel Spacing="{StaticResource IrisSpacingMd}">
+                            <controls:IrisTextField
+                                x:Name="ChurchField"
+                                ErrorMessage="{x:Bind ViewModel.ChurchNameError, Mode=OneWay}"
+                                Glyph="&#xE825;"
+                                Kind="Organization"
+                                Label="Nombre de la iglesia"
+                                Placeholder="Iglesia Vida Nueva"
+                                Submitted="OnFieldSubmitted"
+                                Text="{x:Bind ViewModel.ChurchName, Mode=TwoWay}"
+                                Visibility="{x:Bind ViewModel.IsSignUp, Mode=OneWay}" />
+                            <controls:IrisTextField
+                                x:Name="LeaderField"
+                                ErrorMessage="{x:Bind ViewModel.LeaderNameError, Mode=OneWay}"
+                                Glyph="&#xE77B;"
+                                Kind="Name"
+                                Label="Responsable"
+                                Placeholder="Nombre y apellido"
+                                Submitted="OnFieldSubmitted"
+                                Text="{x:Bind ViewModel.LeaderName, Mode=TwoWay}"
+                                Visibility="{x:Bind ViewModel.IsSignUp, Mode=OneWay}" />
+                            <controls:IrisTextField
+                                x:Name="EmailField"
+                                ErrorMessage="{x:Bind ViewModel.EmailError, Mode=OneWay}"
+                                Glyph="&#xE715;"
+                                Kind="Email"
+                                Label="Correo de la iglesia"
+                                Placeholder="nombre@tuiglesia.org"
+                                Submitted="OnFieldSubmitted"
+                                Text="{x:Bind ViewModel.Email, Mode=TwoWay}" />
+                            <controls:IrisTextField
+                                x:Name="PasswordField"
+                                ErrorMessage="{x:Bind ViewModel.PasswordError, Mode=OneWay}"
+                                Glyph="&#xE72E;"
+                                Hint="{x:Bind ViewModel.PasswordHint, Mode=OneWay}"
+                                Kind="Password"
+                                Label="Contraseña"
+                                Placeholder="{x:Bind ViewModel.PasswordPlaceholder, Mode=OneWay}"
+                                Submitted="OnFieldSubmitted"
+                                Text="{x:Bind ViewModel.Password, Mode=TwoWay}" />
+                            <Button
+                                HorizontalAlignment="Right"
+                                Command="{x:Bind ViewModel.PresentPasswordRecoveryCommand}"
+                                Content="¿Olvidaste tu contraseña?"
+                                Style="{StaticResource IrisLinkButtonStyle}"
+                                Visibility="{x:Bind ViewModel.IsSignIn, Mode=OneWay}" />
+                        </StackPanel>
+
+                        <Button
+                            AutomationProperties.Name="{x:Bind ViewModel.SubmitText, Mode=OneWay}"
+                            Command="{x:Bind ViewModel.SubmitCommand}"
+                            Style="{StaticResource IrisPrimaryButtonStyle}">
+                            <Grid>
+                                <TextBlock Text="{x:Bind ViewModel.SubmitText, Mode=OneWay}" Visibility="{x:Bind ViewModel.IsIdle, Mode=OneWay}" />
+                                <ProgressRing
+                                    Width="20"
+                                    Height="20"
+                                    Foreground="{StaticResource IrisTextInverseBrush}"
+                                    IsActive="{x:Bind ViewModel.IsSubmitting, Mode=OneWay}" />
+                            </Grid>
+                        </Button>
+
+                        <TextBlock
+                            HorizontalAlignment="Center"
+                            Style="{StaticResource IrisCaptionTextStyle}"
+                            TextAlignment="Center"
+                            Visibility="{x:Bind ViewModel.IsSignUp, Mode=OneWay}">
+                            <Run Text="Al crear tu cuenta aceptas los " /><Hyperlink Foreground="{StaticResource IrisTextSecondaryBrush}" UnderlineStyle="None"><Bold>Términos</Bold></Hyperlink><Run Text=" y la " /><Hyperlink Foreground="{StaticResource IrisTextSecondaryBrush}" UnderlineStyle="None"><Bold>Política de privacidad</Bold></Hyperlink><Run Text="." />
+                        </TextBlock>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </ScrollViewer>
+
+        <!--  Drag region for the extended title bar  -->
+        <Border
+            x:Name="DragStrip"
+            Height="48"
+            VerticalAlignment="Top"
+            Background="Transparent" />
+
+        <!--  Password recovery sheet  -->
+        <controls:IrisModal
+            CloseCommand="{x:Bind ViewModel.CloseRecoveryCommand}"
+            IsOpen="{x:Bind ViewModel.IsRecoveryOpen, Mode=OneWay}"
+            PanelWidth="{StaticResource IrisFormModalWidth}">
+            <Grid Padding="{StaticResource IrisPaddingXl}">
+                <Button
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Top"
+                    AutomationProperties.Name="Cerrar"
+                    Command="{x:Bind ViewModel.CloseRecoveryCommand}"
+                    Style="{StaticResource IrisIconButtonStyle}"
+                    ToolTipService.ToolTip="Cerrar">
+                    <FontIcon Glyph="&#xE711;" Style="{StaticResource IrisIconStyle}" />
+                </Button>
+
+                <StackPanel Spacing="{StaticResource IrisSpacingLg}">
+                    <Grid
+                        Width="{StaticResource IrisEmblemSize}"
+                        Height="{StaticResource IrisEmblemSize}"
+                        HorizontalAlignment="Left">
+                        <Ellipse
+                            Fill="{StaticResource IrisSurfaceRaisedBrush}"
+                            Stroke="{StaticResource IrisStrokeBrush}"
+                            StrokeThickness="1" />
+                        <FontIcon
+                            FontSize="{StaticResource IrisIconLargeFontSize}"
+                            Foreground="{StaticResource IrisAccentGradientBrush}"
+                            Glyph="&#xE8D7;"
+                            Style="{StaticResource IrisIconStyle}"
+                            Visibility="{x:Bind ViewModel.Recovery.IsEditing, Mode=OneWay, FallbackValue=Visible}" />
+                        <FontIcon
+                            FontSize="{StaticResource IrisIconLargeFontSize}"
+                            Foreground="{StaticResource IrisAccentGradientBrush}"
+                            Glyph="&#xE8C3;"
+                            Style="{StaticResource IrisIconStyle}"
+                            Visibility="{x:Bind ViewModel.Recovery.IsSent, Mode=OneWay, FallbackValue=Collapsed}" />
+                    </Grid>
+
+                    <StackPanel Spacing="{StaticResource IrisSpacingXs}">
+                        <TextBlock
+                            AutomationProperties.HeadingLevel="Level2"
+                            Style="{StaticResource IrisTitleTextStyle}"
+                            Text="{x:Bind ViewModel.Recovery.Title, Mode=OneWay}" />
+                        <TextBlock Style="{StaticResource IrisCalloutTextStyle}">
+                            <Run Text="{x:Bind ViewModel.Recovery.Message, Mode=OneWay}" /><Bold Foreground="{StaticResource IrisTextPrimaryBrush}"><Run Text="{x:Bind ViewModel.Recovery.SentEmail, Mode=OneWay}" /></Bold><Run Text="{x:Bind ViewModel.Recovery.SentSuffix, Mode=OneWay}" />
+                        </TextBlock>
+                    </StackPanel>
+
+                    <StackPanel Spacing="{StaticResource IrisSpacingLg}" Visibility="{x:Bind ViewModel.Recovery.IsEditing, Mode=OneWay, FallbackValue=Collapsed}">
+                        <controls:IrisBanner Message="{x:Bind ViewModel.Recovery.Error, Mode=OneWay}" />
+                        <controls:IrisTextField
+                            x:Name="RecoveryEmailField"
+                            ErrorMessage="{x:Bind ViewModel.Recovery.EmailError, Mode=OneWay}"
+                            Glyph="&#xE715;"
+                            Kind="Email"
+                            Label="Correo de la iglesia"
+                            Placeholder="nombre@tuiglesia.org"
+                            Submitted="OnRecoverySubmitted"
+                            Text="{x:Bind ViewModel.Recovery.Email, Mode=TwoWay}" />
+                        <Button
+                            AutomationProperties.Name="Enviar enlace"
+                            Command="{x:Bind ViewModel.Recovery.SendCommand, Mode=OneWay}"
+                            Style="{StaticResource IrisPrimaryButtonStyle}">
+                            <Grid>
+                                <TextBlock Text="Enviar enlace" Visibility="{x:Bind ViewModel.Recovery.IsNotSending, Mode=OneWay, FallbackValue=Visible}" />
+                                <ProgressRing
+                                    Width="20"
+                                    Height="20"
+                                    Foreground="{StaticResource IrisTextInverseBrush}"
+                                    IsActive="{x:Bind ViewModel.Recovery.IsSending, Mode=OneWay, FallbackValue=False}" />
+                            </Grid>
+                        </Button>
+                    </StackPanel>
+
+                    <Button
+                        Command="{x:Bind ViewModel.CloseRecoveryCommand}"
+                        Content="Volver a iniciar sesión"
+                        Style="{StaticResource IrisGlassButtonStyle}"
+                        Visibility="{x:Bind ViewModel.Recovery.IsSent, Mode=OneWay, FallbackValue=Collapsed}" />
+                </StackPanel>
+            </Grid>
+        </controls:IrisModal>
+    </Grid>
+</Page>

@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Iris (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "Iris (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}

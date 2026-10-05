@@ -1,0 +1,901 @@
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Globalization;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using Iris.Core.Models;
+using Iris.Core.Services;
+using Iris.Features.AddToService;
+using Iris.Features.Bible;
+using Iris.Shell;
+using SpanishFormat = Iris.Core.Formatting.Spanish;
+
+namespace Iris.Features.LiveConsole;
+
+public enum LoadPhase
+{
+    Loading,
+    Loaded,
+    Failed,
+}
+
+/// <summary>What is on the TV: an item and the index of its slide.</summary>
+public sealed record LiveRef(Guid ItemId, int SlideIndex);
+
+/// <summary>
+/// Live console (IRIS_SPEC §6.2, §7). "The list opens, the workspace presents": selecting in the
+/// service list never changes the TV; clicking a card or the media stage does. A service started
+/// from Home begins empty; the modules it receives stay fixed while it lasts (§7.8).
+/// </summary>
+public sealed partial class LiveConsoleViewModel : ObservableObject
+{
+    private static readonly CultureInfo Spanish = SpanishFormat.Culture;
+
+    private readonly IServicePlanRepository _plans;
+    private readonly IBackgroundRepository _backgrounds;
+    private readonly IBibleRepository _bible;
+    private readonly ILibraryRepository _library;
+    private readonly IMediaPlaybackService _player;
+    private readonly IDisplayOutputService _display;
+    private readonly IServiceTypeRepository _types;
+    private readonly IPeopleRepository _people;
+    private readonly ITimeRecordRepository _records;
+    private readonly SignedInNavigator _navigator;
+
+    private CancellationTokenSource _lifetime = new();
+    private CancellationTokenSource? _undoTimer;
+    private Guid? _openItemId;
+    private ServiceItem? _presentedScripture;
+    private ConsoleLaunch? _launch;
+
+    public LiveConsoleViewModel(
+        IServicePlanRepository plans,
+        IBackgroundRepository backgrounds,
+        IBibleRepository bible,
+        ILibraryRepository library,
+        IMediaPlaybackService player,
+        IDisplayOutputService display,
+        IServiceTypeRepository types,
+        IPeopleRepository people,
+        ITimeRecordRepository records,
+        SignedInNavigator navigator)
+    {
+        _plans = plans;
+        _backgrounds = backgrounds;
+        _bible = bible;
+        _library = library;
+        _player = player;
+        _display = display;
+        _types = types;
+        _people = people;
+        _records = records;
+        _navigator = navigator;
+        Items.CollectionChanged += (_, _) => Renumber();
+    }
+
+    // ===== Top bar =====
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsLoading), nameof(IsLoaded), nameof(IsFailed))]
+    public partial LoadPhase Phase { get; set; }
+
+    public bool IsLoading => Phase == LoadPhase.Loading;
+
+    public bool IsLoaded => Phase == LoadPhase.Loaded;
+
+    public bool IsFailed => Phase == LoadPhase.Failed;
+
+    [ObservableProperty]
+    public partial string ServiceTitle { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial string ServiceDateText { get; set; } = string.Empty;
+
+    // ===== Modules (§7.8) =====
+
+    public ChurchModules Modules { get; private set; } = ChurchModules.All;
+
+    public bool ShowsBible => Modules.Bible;
+
+    public bool ShowsMultimedia => Modules.Multimedia;
+
+    public string EmptyServiceHint => ShowsMultimedia
+        ? "Haz clic en Agregar para sumar letras, música, imágenes o videos."
+        : "Haz clic en Agregar para sumar letras.";
+
+    // ===== Block timer (§6.9) =====
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowsBlockTimer))]
+    public partial BlockTimerViewModel? BlockTimer { get; set; }
+
+    /// <summary>Only with the time-control module on and a service type that has blocks.</summary>
+    public bool ShowsBlockTimer => BlockTimer is not null;
+
+    /// <summary>Sets up the console for the service type started from Home (null = preview service).</summary>
+    public void Configure(ConsoleLaunch? launch)
+    {
+        _launch = launch;
+        Modules = launch?.Modules ?? ChurchModules.All;
+        BlockTimer = launch is { ServiceType: { TracksTime: true } type } && Modules.TimeControl
+            ? new BlockTimerViewModel(type, launch.People, _types, _people, _records, _navigator, launch.StartedAt)
+            : null;
+        if (BlockTimer is { } timer)
+        {
+            timer.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(BlockTimerViewModel.IsSheetOpen))
+                {
+                    OnPropertyChanged(nameof(IsModalOpen));
+                }
+            };
+        }
+
+        OnPropertyChanged(nameof(Modules));
+        OnPropertyChanged(nameof(ShowsBible));
+        OnPropertyChanged(nameof(ShowsMultimedia));
+        OnPropertyChanged(nameof(EmptyServiceHint));
+    }
+
+    // ===== Service list =====
+
+    public ObservableCollection<ServiceItemViewModel> Items { get; } = [];
+
+    public string ItemCountText => Items.Count.ToString(Spanish);
+
+    public bool HasItems => Items.Count > 0;
+
+    public bool IsServiceEmpty => IsLoaded && Items.Count == 0;
+
+    public string ClearServiceButtonText => Items.Count == 1 ? "Quitar 1 elemento" : $"Quitar {Items.Count} elementos";
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsModalOpen))]
+    public partial bool IsConfirmingClear { get; set; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(UndoMessage), nameof(HasRecentlyRemoved))]
+    public partial RemovedItem? RecentlyRemoved { get; set; }
+
+    public bool HasRecentlyRemoved => RecentlyRemoved is not null;
+
+    public string UndoMessage => RecentlyRemoved is null ? string.Empty : $"Se quitó «{RecentlyRemoved.Item.Title}»";
+
+    // ===== TV state =====
+
+    public IReadOnlyList<BackgroundOptionViewModel> Backgrounds { get; private set; } = [];
+
+    [ObservableProperty]
+    public partial string? SelectedBackgroundId { get; set; }
+
+    [ObservableProperty]
+    public partial LiveRef? Live { get; set; }
+
+    [ObservableProperty]
+    public partial bool IsScreenCleared { get; set; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasPlayback))]
+    public partial PlaybackViewModel? Playback { get; set; }
+
+    public bool HasPlayback => Playback is not null;
+
+    /// <summary>What the TV shows (§7.3): background only when cleared or nothing is live.</summary>
+    public ProjectionFrame LiveFrame
+    {
+        get
+        {
+            var background = Backgrounds.FirstOrDefault(b => b.Model.Id == SelectedBackgroundId)?.Model;
+            if (IsScreenCleared || Live is null || FindItem(Live.ItemId) is not { } item || Live.SlideIndex >= item.Slides.Count)
+            {
+                return new ProjectionFrame(background, ProjectionContent.Blank);
+            }
+
+            return new ProjectionFrame(background, item.Slides[Live.SlideIndex].Content);
+        }
+    }
+
+    // ===== Workspace =====
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsShowingScripture))]
+    public partial ServiceItem? ScriptureItem { get; set; }
+
+    public bool IsShowingScripture => ScriptureItem is not null;
+
+    public ServiceItem? OpenItem => ScriptureItem ?? Items.FirstOrDefault(i => i.Id == _openItemId)?.Model;
+
+    public bool HasOpenItem => OpenItem is not null;
+
+    public bool IsNothingSelected => IsLoaded && OpenItem is null;
+
+    public ServiceItemKind OpenKind => OpenItem?.Kind ?? ServiceItemKind.Song;
+
+    public string OpenTitle => OpenItem?.Title ?? string.Empty;
+
+    public string OpenSubtitle => OpenItem?.Subtitle ?? string.Empty;
+
+    public bool IsShowingCards => IsLoaded && OpenItem is { IsMedia: false };
+
+    public bool IsShowingMedia => IsLoaded && OpenItem is { IsMedia: true };
+
+    public bool IsEditVisible => HasOpenItem && !IsShowingScripture;
+
+    public ObservableCollection<SlideCardViewModel> Cards { get; } = [];
+
+    /// <summary>Index of the live slide when it belongs to the open item (drives auto-scroll), else -1.</summary>
+    public int LiveSlideIndex => OpenItem is { } open && Live is { } live && live.ItemId == open.Id ? live.SlideIndex : -1;
+
+    public bool CanGoPrevious => IsShowingCards && LiveSlideIndex > 0;
+
+    public bool CanGoNext => IsShowingCards && LiveSlideIndex < Cards.Count - 1;
+
+    public ProjectionFrame MediaFrame => OpenItem is { IsMedia: true } item ? new ProjectionFrame(null, item.Slides[0].Content) : ProjectionFrame.Black;
+
+    public bool IsSelectedMediaActive => OpenItem switch
+    {
+        { Kind: ServiceItemKind.Image } image => !IsScreenCleared && Live?.ItemId == image.Id,
+        { IsMedia: true } media => Playback is { IsPlaying: true } p && p.ItemId == media.Id,
+        _ => false,
+    };
+
+    public bool CanPresentSelectedMedia => !IsSelectedMediaActive;
+
+    public string MediaButtonText => OpenKind == ServiceItemKind.Image
+        ? IsSelectedMediaActive ? "En pantalla" : "Mostrar en el TV"
+        : IsSelectedMediaActive ? "Reproduciendo" : "Reproducir";
+
+    public string MediaBadgeText => OpenKind == ServiceItemKind.Image ? "EN PANTALLA" : "REPRODUCIENDO";
+
+    public string MediaHint => OpenKind switch
+    {
+        ServiceItemKind.Music => "La música suena en el salón; el TV no cambia. Contrólala desde el reproductor.",
+        ServiceItemKind.Video => "El video se muestra en el TV. Contrólalo desde el reproductor bajo la pantalla en vivo.",
+        _ => "La imagen se muestra a pantalla completa en el TV.",
+    };
+
+    // ===== Sheets =====
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsBibleOpen), nameof(IsModalOpen))]
+    public partial BiblePickerViewModel? BiblePicker { get; set; }
+
+    public bool IsBibleOpen => BiblePicker is not null;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsAddOpen), nameof(IsModalOpen))]
+    public partial AddToServiceViewModel? AddSheet { get; set; }
+
+    public bool IsAddOpen => AddSheet is not null;
+    public bool IsModalOpen => IsConfirmingClear || IsBibleOpen || IsAddOpen || BlockTimer?.IsSheetOpen == true;
+
+    // ===== Lifecycle =====
+
+    [RelayCommand]
+    private async Task LoadAsync()
+    {
+        _lifetime.Cancel();
+        _lifetime = new CancellationTokenSource();
+        Phase = LoadPhase.Loading;
+        try
+        {
+            var backgrounds = await _backgrounds.BackgroundsAsync();
+            Backgrounds = backgrounds.Select(b => new BackgroundOptionViewModel(b, this)).ToList();
+            OnPropertyChanged(nameof(Backgrounds));
+            SelectBackgroundCore(Backgrounds.FirstOrDefault()?.Model.Id);
+            Items.Clear();
+
+            if (_launch is { ServiceType: { } type } launch)
+            {
+                // Started from Home (§6.2): empty list, nothing live, first background; the date is the start time.
+                ServiceTitle = type.Name;
+                ServiceDateText = $"{SpanishFormat.DayAndMonth(launch.StartedAt)} · {SpanishFormat.Time(launch.StartedAt)}";
+                Phase = LoadPhase.Loaded;
+            }
+            else
+            {
+                // Preview service (§7.7): "Sublime gracia" open, its 2nd stanza on the TV, "Aurora" background.
+                var plan = await _plans.CurrentServiceAsync();
+                ServiceTitle = plan.Title;
+                ServiceDateText = plan.Date.ToString("dddd, d 'de' MMMM · HH:mm", Spanish);
+                foreach (var item in plan.Items.Where(i => ShowsMultimedia || !i.IsMedia))
+                {
+                    Items.Add(new ServiceItemViewModel(item, this));
+                }
+
+                Phase = LoadPhase.Loaded;
+                if (Items.Count > 1)
+                {
+                    Open(Items[1].Id);
+                    if (Cards.Count > 1)
+                    {
+                        GoLive(Cards[1]);
+                    }
+                }
+            }
+
+            Changed();
+        }
+        catch (Exception)
+        {
+            Phase = LoadPhase.Failed;
+            Changed();
+        }
+    }
+
+    /// <summary>Stops loops and blanks the TV when the console goes away.</summary>
+    public void Deactivate()
+    {
+        _lifetime.Cancel();
+        _undoTimer?.Cancel();
+        BlockTimer?.Stop();
+        if (Playback is not null)
+        {
+            _player.Stop();
+            Playback = null;
+        }
+
+        _display.Present(ProjectionFrame.Black);
+    }
+
+    /// <summary>"‹ Inicio": asks first while the block timer is running (§6.9).</summary>
+    [RelayCommand]
+    private void RequestExit()
+    {
+        if (BlockTimer?.RequestExit() == false)
+        {
+            return;
+        }
+
+        _navigator.GoHome();
+    }
+
+    // ===== Opening and presenting =====
+
+    [RelayCommand]
+    private void SelectItem(ServiceItemViewModel item)
+    {
+        ScriptureItem = null;
+        Open(item.Id);
+        Changed();
+    }
+
+    [RelayCommand]
+    private void GoLive(SlideCardViewModel card)
+    {
+        if (OpenItem is not { } item)
+        {
+            return;
+        }
+
+        Live = new LiveRef(item.Id, card.Index);
+        IsScreenCleared = false;
+        PauseVideoIfPlaying();
+        Changed();
+    }
+
+    [RelayCommand]
+    private void PresentSelectedMedia()
+    {
+        if (OpenItem is not { IsMedia: true } item || IsSelectedMediaActive)
+        {
+            return;
+        }
+
+        switch (item.Kind)
+        {
+            case ServiceItemKind.Music:
+                // The TV does not change; the music plays in the room.
+                StartOrResume(item);
+                break;
+            case ServiceItemKind.Video:
+                Live = new LiveRef(item.Id, 0);
+                IsScreenCleared = false;
+                StartOrResume(item);
+                break;
+            default:
+                Live = new LiveRef(item.Id, 0);
+                IsScreenCleared = false;
+                PauseVideoIfPlaying();
+                break;
+        }
+
+        Changed();
+    }
+
+    [RelayCommand]
+    private void ToggleClearScreen()
+    {
+        IsScreenCleared = !IsScreenCleared;
+        Changed();
+    }
+
+    [RelayCommand]
+    private void Next() => Step(+1);
+
+    [RelayCommand]
+    private void Previous() => Step(-1);
+
+    private void Step(int by)
+    {
+        if (!IsShowingCards || Cards.Count == 0)
+        {
+            return;
+        }
+
+        var target = LiveSlideIndex < 0 ? 0 : Math.Clamp(LiveSlideIndex + by, 0, Cards.Count - 1);
+        if (target != LiveSlideIndex)
+        {
+            GoLive(Cards[target]);
+        }
+    }
+
+    [RelayCommand]
+    private void SelectBackground(BackgroundOptionViewModel option)
+    {
+        SelectBackgroundCore(option.Model.Id);
+        Changed();
+    }
+
+    private void SelectBackgroundCore(string? id)
+    {
+        SelectedBackgroundId = id;
+        foreach (var option in Backgrounds)
+        {
+            option.IsSelected = option.Model.Id == id;
+        }
+    }
+
+    // ===== Playback (§7.4) =====
+
+    [RelayCommand]
+    private void TogglePlayPause()
+    {
+        if (Playback is not { } playback)
+        {
+            return;
+        }
+
+        if (playback.IsPlaying)
+        {
+            playback.IsPlaying = false;
+            _player.Pause();
+        }
+        else
+        {
+            if (playback.IsVideo)
+            {
+                // A paused video resumes on the TV.
+                Live = new LiveRef(playback.ItemId, 0);
+                IsScreenCleared = false;
+            }
+
+            playback.IsPlaying = true;
+            _player.Resume();
+            RunPlaybackClock(playback);
+        }
+
+        Changed();
+    }
+
+    [RelayCommand]
+    private void RestartPlayback()
+    {
+        if (Playback is { } playback)
+        {
+            playback.Rewind();
+            _player.Seek(0);
+        }
+    }
+
+    [RelayCommand]
+    private void ToggleLooping()
+    {
+        if (Playback is { } playback)
+        {
+            playback.IsLooping = !playback.IsLooping;
+            _player.SetLooping(playback.IsLooping);
+        }
+    }
+
+    [RelayCommand]
+    private void StopPlayback()
+    {
+        StopPlaybackCore();
+        Changed();
+    }
+
+    private void StopPlaybackCore()
+    {
+        if (Playback is not { } playback)
+        {
+            return;
+        }
+
+        // Stopping a video that is on the TV leaves only the background.
+        if (playback.IsVideo && Live?.ItemId == playback.ItemId)
+        {
+            Live = null;
+        }
+
+        _player.Stop();
+        Playback = null;
+    }
+
+    private void StartOrResume(ServiceItem item)
+    {
+        if (Playback is { } current && current.ItemId == item.Id)
+        {
+            // Presenting the loaded media again resumes it, never restarts.
+            if (!current.IsPlaying)
+            {
+                current.IsPlaying = true;
+                _player.Resume();
+                RunPlaybackClock(current);
+            }
+
+            return;
+        }
+
+        // Only one playback at a time. Keep the TV if the new item is the video being put live.
+        var keepLive = Live;
+        StopPlaybackCore();
+        if (keepLive?.ItemId == item.Id)
+        {
+            Live = keepLive;
+        }
+
+        var duration = item.Slides[0].Content switch
+        {
+            AudioContent audio => audio.Duration.TotalSeconds,
+            VideoContent video => video.Duration.TotalSeconds,
+            _ => 0,
+        };
+        var playback = new PlaybackViewModel(item, duration, _player) { IsPlaying = true };
+        Playback = playback;
+        _player.Play(item.Id);
+        RunPlaybackClock(playback);
+    }
+
+    private void PauseVideoIfPlaying()
+    {
+        if (Playback is { IsVideo: true, IsPlaying: true } video)
+        {
+            video.IsPlaying = false;
+            _player.Pause();
+        }
+    }
+
+    private async void RunPlaybackClock(PlaybackViewModel playback)
+    {
+        var token = _lifetime.Token;
+        try
+        {
+            while (Playback == playback && playback.IsPlaying && !token.IsCancellationRequested)
+            {
+                await Task.Delay(500, token);
+                if (Playback != playback || !playback.IsPlaying)
+                {
+                    return;
+                }
+
+                playback.Tick(0.5);
+                if (playback.Elapsed >= playback.Duration)
+                {
+                    if (playback.IsLooping)
+                    {
+                        playback.Rewind();
+                    }
+                    else
+                    {
+                        StopPlayback();
+                        return;
+                    }
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    // ===== Service editing (§7.6) =====
+
+    [RelayCommand]
+    private void PresentAddToService()
+    {
+        var sheet = new AddToServiceViewModel(_library, AppendToService, ShowsMultimedia);
+        AddSheet = sheet;
+        _ = sheet.LoadAsync();
+    }
+
+    [RelayCommand]
+    private void CloseAddToService() => AddSheet = null;
+
+    private void AppendToService(IReadOnlyList<ServiceItem> items)
+    {
+        AddSheet = null;
+        if (items.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var item in items)
+        {
+            Items.Add(new ServiceItemViewModel(item, this));
+        }
+
+        ScriptureItem = null;
+        Open(items[0].Id);
+        Changed();
+    }
+
+    [RelayCommand]
+    private void RemoveItem(ServiceItemViewModel item)
+    {
+        var index = Items.IndexOf(item);
+        if (index < 0)
+        {
+            return;
+        }
+
+        Items.RemoveAt(index);
+        if (Playback?.ItemId == item.Id)
+        {
+            StopPlaybackCore();
+        }
+
+        if (Live?.ItemId == item.Id)
+        {
+            Live = null;
+        }
+
+        if (_openItemId == item.Id)
+        {
+            Open(Items.Count == 0 ? null : Items[Math.Min(index, Items.Count - 1)].Id);
+        }
+
+        ShowUndo(new RemovedItem(item.Model, index));
+        Changed();
+    }
+
+    [RelayCommand]
+    private void RemoveSelected()
+    {
+        if (!IsShowingScripture && Items.FirstOrDefault(i => i.Id == _openItemId) is { } item)
+        {
+            RemoveItem(item);
+        }
+    }
+
+    [RelayCommand]
+    private void UndoRemoval()
+    {
+        if (RecentlyRemoved is not { } removed)
+        {
+            return;
+        }
+
+        _undoTimer?.Cancel();
+        RecentlyRemoved = null;
+        Items.Insert(Math.Min(removed.Index, Items.Count), new ServiceItemViewModel(removed.Item, this));
+        ScriptureItem = null;
+        Open(removed.Item.Id);
+        Changed();
+    }
+
+    [RelayCommand]
+    private void DuplicateItem(ServiceItemViewModel item)
+    {
+        var index = Items.IndexOf(item);
+        if (index < 0)
+        {
+            return;
+        }
+
+        var copy = item.Model.Duplicate();
+        Items.Insert(index + 1, new ServiceItemViewModel(copy, this));
+        ScriptureItem = null;
+        Open(copy.Id);
+        Changed();
+    }
+
+    [RelayCommand]
+    private void DuplicateSelected()
+    {
+        if (!IsShowingScripture && Items.FirstOrDefault(i => i.Id == _openItemId) is { } item)
+        {
+            DuplicateItem(item);
+        }
+    }
+
+    [RelayCommand]
+    private void MoveItemUp(ServiceItemViewModel item) => MoveItem(item, -1);
+
+    [RelayCommand]
+    private void MoveItemDown(ServiceItemViewModel item) => MoveItem(item, +1);
+
+    [RelayCommand]
+    private void MoveSelectedUp() => MoveSelected(-1);
+
+    [RelayCommand]
+    private void MoveSelectedDown() => MoveSelected(+1);
+
+    private void MoveSelected(int by)
+    {
+        if (!IsShowingScripture && Items.FirstOrDefault(i => i.Id == _openItemId) is { } item)
+        {
+            MoveItem(item, by);
+        }
+    }
+
+    private void MoveItem(ServiceItemViewModel item, int by)
+    {
+        var index = Items.IndexOf(item);
+        var target = index + by;
+        if (index < 0 || target < 0 || target >= Items.Count)
+        {
+            return;
+        }
+
+        Items.Move(index, target);
+    }
+
+    [RelayCommand]
+    private void RequestClearService()
+    {
+        if (Items.Count > 0)
+        {
+            OnPropertyChanged(nameof(ClearServiceButtonText));
+            IsConfirmingClear = true;
+        }
+    }
+
+    [RelayCommand]
+    private void CancelClearService() => IsConfirmingClear = false;
+
+    [RelayCommand]
+    private void ClearService()
+    {
+        IsConfirmingClear = false;
+        var ids = Items.Select(i => i.Id).ToHashSet();
+        if (Playback is { } playback && ids.Contains(playback.ItemId))
+        {
+            StopPlaybackCore();
+        }
+
+        if (Live is { } live && ids.Contains(live.ItemId))
+        {
+            Live = null;
+        }
+
+        Items.Clear();
+        if (!IsShowingScripture)
+        {
+            Open(null);
+        }
+
+        Changed();
+    }
+
+    private void ShowUndo(RemovedItem removed)
+    {
+        _undoTimer?.Cancel();
+        var timer = _undoTimer = new CancellationTokenSource();
+        RecentlyRemoved = removed;
+        _ = HideUndoLater(timer.Token);
+
+        async Task HideUndoLater(CancellationToken token)
+        {
+            try
+            {
+                await Task.Delay(TimeSpan.FromSeconds(5), token);
+                RecentlyRemoved = null;
+            }
+            catch (OperationCanceledException)
+            {
+            }
+        }
+    }
+
+    // ===== Bible (§6.3, §7.5) =====
+
+    [RelayCommand]
+    private void PresentBible()
+    {
+        var picker = new BiblePickerViewModel(_bible, PresentScriptureAsync);
+        BiblePicker = picker;
+        _ = picker.LoadAsync();
+    }
+
+    [RelayCommand]
+    private void CloseBible() => BiblePicker = null;
+
+    /// <summary>Opens the whole chapter as a temporary item (not added to the service) and sends the verse live.</summary>
+    private async Task PresentScriptureAsync(BibleBook book, int chapter, int verse)
+    {
+        var verses = await _bible.VersesAsync(book.Id, chapter);
+        BiblePicker = null;
+        ScriptureItem = _presentedScripture = ServiceItemFactory.FromScripture(book, chapter, verses, _bible.TranslationName);
+        RebuildCards();
+        var index = Math.Clamp(verse - 1, 0, Cards.Count - 1);
+        if (Cards.Count > 0)
+        {
+            GoLive(Cards[index]);
+        }
+
+        Changed();
+    }
+
+    // ===== Helpers =====
+
+    // The last presented passage stays resolvable after the workspace moves on, so the TV keeps showing it.
+    private ServiceItem? FindItem(Guid id) =>
+        _presentedScripture is { } scripture && scripture.Id == id ? scripture : Items.FirstOrDefault(i => i.Id == id)?.Model;
+
+    private void Open(Guid? itemId)
+    {
+        _openItemId = itemId;
+        RebuildCards();
+    }
+
+    private void RebuildCards()
+    {
+        Cards.Clear();
+        if (OpenItem is { IsMedia: false } item)
+        {
+            for (var i = 0; i < item.Slides.Count; i++)
+            {
+                Cards.Add(new SlideCardViewModel(i, item.Slides[i], this));
+            }
+        }
+    }
+
+    private void Renumber()
+    {
+        for (var i = 0; i < Items.Count; i++)
+        {
+            Items[i].Number = (i + 1).ToString("00", Spanish);
+            Items[i].CanMoveUp = i > 0;
+            Items[i].CanMoveDown = i < Items.Count - 1;
+        }
+
+        OnPropertyChanged(nameof(ItemCountText));
+        OnPropertyChanged(nameof(HasItems));
+        OnPropertyChanged(nameof(IsServiceEmpty));
+    }
+
+    /// <summary>Refreshes derived state and pushes the live frame to the TV.</summary>
+    private void Changed()
+    {
+        foreach (var row in Items)
+        {
+            row.IsSelected = !IsShowingScripture && row.Id == _openItemId;
+        }
+
+        var liveIndex = LiveSlideIndex;
+        foreach (var card in Cards)
+        {
+            card.IsLive = card.Index == liveIndex && !IsScreenCleared;
+        }
+
+        foreach (var name in DerivedProperties)
+        {
+            OnPropertyChanged(name);
+        }
+
+        _display.Present(LiveFrame);
+    }
+
+    private static readonly string[] DerivedProperties =
+    [
+        nameof(LiveFrame), nameof(OpenItem), nameof(HasOpenItem), nameof(IsNothingSelected), nameof(OpenKind), nameof(OpenTitle),
+        nameof(OpenSubtitle), nameof(IsShowingCards), nameof(IsShowingMedia), nameof(IsEditVisible), nameof(LiveSlideIndex),
+        nameof(CanGoPrevious), nameof(CanGoNext), nameof(MediaFrame), nameof(IsSelectedMediaActive), nameof(CanPresentSelectedMedia),
+        nameof(MediaButtonText), nameof(MediaBadgeText), nameof(MediaHint), nameof(IsServiceEmpty), nameof(ClearServiceButtonText),
+    ];
+}

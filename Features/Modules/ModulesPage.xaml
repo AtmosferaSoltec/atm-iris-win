@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--  Módulos (IRIS_SPEC §6.6): one switch per module, saved immediately.  -->
+<Page
+    x:Class="Iris.Features.Modules.ModulesPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:Iris.DesignSystem.Controls"
+    xmlns:design="using:Iris.DesignSystem"
+    xmlns:modules="using:Iris.Features.Modules"
+    xmlns:shell="using:Iris.Shell"
+    Background="Transparent">
+
+    <Page.Resources>
+        <DataTemplate x:Key="ModuleRowTemplate" x:DataType="modules:ModuleRowViewModel">
+            <StackPanel>
+                <Rectangle Style="{StaticResource IrisDividerStyle}" Visibility="{x:Bind HasDivider}" />
+                <Grid Padding="0,16" ColumnSpacing="{StaticResource IrisSpacingMd}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Border
+                        Width="{StaticResource IrisSettingsIconSize}"
+                        Height="{StaticResource IrisSettingsIconSize}"
+                        VerticalAlignment="Center"
+                        Background="{x:Bind design:Bind.ColorTint(TintKey, 0.14)}"
+                        CornerRadius="{StaticResource IrisRadiusSm}">
+                        <FontIcon
+                            Foreground="{x:Bind design:Bind.ColorBrush(TintKey)}"
+                            Glyph="{x:Bind Glyph}"
+                            Style="{StaticResource IrisIconStyle}" />
+                    </Border>
+                    <StackPanel
+                        Grid.Column="1"
+                        VerticalAlignment="Center"
+                        Spacing="2">
+                        <TextBlock Style="{StaticResource IrisBodyEmphasizedTextStyle}" Text="{x:Bind Title}" />
+                        <TextBlock Style="{StaticResource IrisCalloutTextStyle}" Text="{x:Bind Description}" />
+                    </StackPanel>
+                    <ToggleSwitch
+                        Grid.Column="2"
+                        MinWidth="0"
+                        VerticalAlignment="Center"
+                        AutomationProperties.Name="{x:Bind Title}"
+                        IsEnabled="{x:Bind CanToggle}"
+                        IsOn="{x:Bind IsOn, Mode=TwoWay}"
+                        OffContent=""
+                        OnContent="" />
+                </Grid>
+            </StackPanel>
+        </DataTemplate>
+    </Page.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="{StaticResource IrisTopBarRowHeight}" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <shell:AppTopBar Title="Módulos" BackCommand="{x:Bind ViewModel.GoHomeCommand}" />
+
+        <ScrollViewer Grid.Row="1">
+            <Border
+                MaxWidth="{StaticResource IrisSettingsColumnWidth}"
+                Margin="{StaticResource IrisPagePadding}"
+                Padding="{StaticResource IrisPaddingXl}"
+                VerticalAlignment="Top"
+                Style="{StaticResource IrisSurfaceStyle}">
+                <StackPanel Spacing="{StaticResource IrisSpacingLg}">
+                    <StackPanel Spacing="{StaticResource IrisSpacingXs}">
+                        <TextBlock
+                            AutomationProperties.HeadingLevel="Level1"
+                            Style="{StaticResource IrisHeadlineTextStyle}"
+                            Text="Módulos" />
+                        <TextBlock Style="{StaticResource IrisCalloutTextStyle}" Text="Elige qué partes de Iris usa tu iglesia. Lo que apagues desaparece de la consola." />
+                    </StackPanel>
+
+                    <controls:IrisBanner Kind="Error" Message="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}" />
+
+                    <StackPanel>
+                        <ItemsRepeater ItemTemplate="{StaticResource ModuleRowTemplate}" ItemsSource="{x:Bind ViewModel.Rows}" />
+                        <controls:IrisBanner
+                            Kind="Info"
+                            Message="Los tiempos guardados se conservan. Puedes volver a activarlo cuando quieras."
+                            Visibility="{x:Bind ViewModel.IsTimeControlOff, Mode=OneWay}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </ScrollViewer>
+    </Grid>
+</Page>

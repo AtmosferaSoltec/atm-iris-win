@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Person row (IRIS_SPEC §6.7): avatar, name, "{N} bloques". Desktop: trash on hover, swipe on touch,
+    right-click menu with Renombrar / Eliminar.
+-->
+<UserControl
+    x:Class="Iris.Features.People.PersonRow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:Iris.DesignSystem.Controls"
+    IsTabStop="False"
+    PointerCanceled="OnPointerExited"
+    PointerEntered="OnPointerEntered"
+    PointerExited="OnPointerExited">
+
+    <StackPanel>
+        <Rectangle Style="{StaticResource IrisDividerStyle}" Visibility="{x:Bind Row.HasDivider, Mode=OneWay}" />
+        <SwipeControl>
+            <SwipeControl.RightItems>
+                <SwipeItems Mode="Execute">
+                    <SwipeItem
+                        Background="{StaticResource IrisDangerBrush}"
+                        Command="{x:Bind Row.Owner.RequestDeleteCommand, Mode=OneWay}"
+                        CommandParameter="{x:Bind Row, Mode=OneWay}"
+                        Foreground="{StaticResource IrisTextInverseBrush}"
+                        Text="Eliminar">
+                        <SwipeItem.IconSource>
+                            <FontIconSource Glyph="&#xE74D;" />
+                        </SwipeItem.IconSource>
+                    </SwipeItem>
+                </SwipeItems>
+            </SwipeControl.RightItems>
+
+            <Grid
+                Padding="0,12"
+                Background="Transparent"
+                ColumnSpacing="{StaticResource IrisSpacingMd}">
+                <Grid.ContextFlyout>
+                    <MenuFlyout>
+                        <MenuFlyoutItem
+                            Command="{x:Bind Row.Owner.BeginRenameCommand, Mode=OneWay}"
+                            CommandParameter="{x:Bind Row, Mode=OneWay}"
+                            Text="Renombrar">
+                            <MenuFlyoutItem.Icon>
+                                <FontIcon Glyph="&#xE8AC;" />
+                            </MenuFlyoutItem.Icon>
+                        </MenuFlyoutItem>
+                        <MenuFlyoutItem
+                            Command="{x:Bind Row.Owner.RequestDeleteCommand, Mode=OneWay}"
+                            CommandParameter="{x:Bind Row, Mode=OneWay}"
+                            Foreground="{StaticResource IrisDangerBrush}"
+                            Text="Eliminar">
+                            <MenuFlyoutItem.Icon>
+                                <FontIcon Foreground="{StaticResource IrisDangerBrush}" Glyph="&#xE74D;" />
+                            </MenuFlyoutItem.Icon>
+                        </MenuFlyoutItem>
+                    </MenuFlyout>
+                </Grid.ContextFlyout>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <controls:IrisAvatar
+                    ColorIndex="{x:Bind Row.ColorIndex, Mode=OneWay}"
+                    Initials="{x:Bind Row.Initials, Mode=OneWay}"
+                    Size="{StaticResource IrisAvatarRowSize}" />
+                <TextBlock
+                    Grid.Column="1"
+                    VerticalAlignment="Center"
+                    Style="{StaticResource IrisBodyEmphasizedTextStyle}"
+                    Text="{x:Bind Row.Name, Mode=OneWay}" />
+                <TextBlock
+                    Grid.Column="2"
+                    VerticalAlignment="Center"
+                    Style="{StaticResource IrisNumberTextStyle}"
+                    Text="{x:Bind Row.BlocksText, Mode=OneWay}" />
+                <StackPanel
+                    x:Name="HoverActions"
+                    Grid.Column="3"
+                    Orientation="Horizontal"
+                    Opacity="0">
+                    <Button
+                        Width="32"
+                        Height="32"
+                        AutomationProperties.Name="Renombrar"
+                        Command="{x:Bind Row.Owner.BeginRenameCommand, Mode=OneWay}"
+                        CommandParameter="{x:Bind Row, Mode=OneWay}"
+                        Style="{StaticResource IrisSubtleIconButtonStyle}"
+                        ToolTipService.ToolTip="Renombrar">
+                        <FontIcon Glyph="&#xE8AC;" Style="{StaticResource IrisIconStyle}" />
+                    </Button>
+                    <Button
+                        Width="32"
+                        Height="32"
+                        AutomationProperties.Name="Eliminar"
+                        Command="{x:Bind Row.Owner.RequestDeleteCommand, Mode=OneWay}"
+                        CommandParameter="{x:Bind Row, Mode=OneWay}"
+                        Style="{StaticResource IrisSubtleIconButtonStyle}"
+                        ToolTipService.ToolTip="Eliminar">
+                        <FontIcon Glyph="&#xE74D;" Style="{StaticResource IrisIconStyle}" />
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </SwipeControl>
+    </StackPanel>
+</UserControl>

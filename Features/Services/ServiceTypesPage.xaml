@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--  Servicios (IRIS_SPEC §6.8): service-type cards + editor sheet.  -->
+<Page
+    x:Class="Iris.Features.Services.ServiceTypesPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:Iris.DesignSystem.Controls"
+    xmlns:design="using:Iris.DesignSystem"
+    xmlns:services="using:Iris.Features.Services"
+    xmlns:shell="using:Iris.Shell"
+    Background="Transparent">
+
+    <Page.Resources>
+        <DataTemplate x:Key="ServiceCardTemplate" x:DataType="services:ServiceTypeCardViewModel">
+            <Button
+                AutomationProperties.HelpText="Editar servicio"
+                AutomationProperties.Name="{x:Bind AccessibleName}"
+                Command="{x:Bind Owner.EditCommand}"
+                CommandParameter="{x:Bind}"
+                Style="{StaticResource IrisPressableButtonStyle}">
+                <Border Style="{StaticResource IrisConsoleSurfaceStyle}">
+                    <StackPanel>
+                        <Rectangle Height="{StaticResource IrisServiceStripeHeight}" Fill="{x:Bind design:IrisTheme.HexBrush(Color)}" />
+                        <StackPanel Padding="{StaticResource IrisPaddingLg}" Spacing="{StaticResource IrisSpacingSm}">
+                            <TextBlock
+                                MaxLines="1"
+                                Style="{StaticResource IrisTitleTextStyle}"
+                                Text="{x:Bind Name}"
+                                TextTrimming="CharacterEllipsis" />
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <FontIcon
+                                    FontSize="{StaticResource IrisIconSmallFontSize}"
+                                    Foreground="{StaticResource IrisTextSecondaryBrush}"
+                                    Glyph="&#xE787;"
+                                    Style="{StaticResource IrisIconStyle}" />
+                                <TextBlock Style="{StaticResource IrisCalloutTextStyle}" Text="{x:Bind ScheduleText}" />
+                            </StackPanel>
+                            <StackPanel
+                                Padding="0,4,0,0"
+                                Spacing="{StaticResource IrisSpacingSm}"
+                                Visibility="{x:Bind ShowsBlocks}">
+                                <controls:IrisBlockTimeline Minutes="{x:Bind Minutes}" />
+                                <controls:IrisChip
+                                    Glyph="&#xE916;"
+                                    Text="{x:Bind BlocksText}"
+                                    Tint="{x:Bind design:Bind.Color('IrisSuccessColor')}" />
+                            </StackPanel>
+                            <controls:IrisChip
+                                Text="Solo proyección"
+                                Tint="{x:Bind design:Bind.Color('IrisTextSecondaryColor')}"
+                                Visibility="{x:Bind IsProjectionOnly}" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </Button>
+        </DataTemplate>
+    </Page.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="{StaticResource IrisTopBarRowHeight}" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <shell:AppTopBar Title="Servicios" BackCommand="{x:Bind ViewModel.GoHomeCommand}" />
+
+        <ScrollViewer Grid.Row="1">
+            <StackPanel
+                MaxWidth="{StaticResource IrisContentWidth}"
+                Padding="{StaticResource IrisPagePadding}"
+                Spacing="{StaticResource IrisSpacingXl}">
+                <Grid ColumnSpacing="{StaticResource IrisSpacingLg}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Spacing="{StaticResource IrisSpacingXs}">
+                        <TextBlock
+                            AutomationProperties.HeadingLevel="Level1"
+                            Style="{StaticResource IrisHeadlineTextStyle}"
+                            Text="Servicios" />
+                        <TextBlock Style="{StaticResource IrisCalloutTextStyle}" Text="Crea los servicios de tu iglesia y, si quieres, sus bloques de tiempo." />
+                    </StackPanel>
+                    <Button
+                        Grid.Column="1"
+                        Width="{StaticResource IrisNewServiceButtonWidth}"
+                        VerticalAlignment="Center"
+                        Command="{x:Bind ViewModel.CreateServiceTypeCommand}"
+                        Style="{StaticResource IrisPrimaryButtonStyle}">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon
+                                FontSize="{StaticResource IrisCaptionFontSize}"
+                                Glyph="&#xE710;"
+                                Style="{StaticResource IrisIconStyle}" />
+                            <TextBlock Text="Nuevo servicio" />
+                        </StackPanel>
+                    </Button>
+                </Grid>
+
+                <Grid>
+                    <ItemsRepeater ItemTemplate="{StaticResource ServiceCardTemplate}" ItemsSource="{x:Bind ViewModel.Cards}">
+                        <ItemsRepeater.Layout>
+                            <UniformGridLayout
+                                ItemsStretch="Fill"
+                                MinColumnSpacing="{StaticResource IrisSpacingMd}"
+                                MinItemWidth="{StaticResource IrisServiceCardMinWidth}"
+                                MinRowSpacing="{StaticResource IrisSpacingMd}" />
+                        </ItemsRepeater.Layout>
+                    </ItemsRepeater>
+
+                    <StackPanel
+                        Padding="{StaticResource IrisPaddingXxl}"
+                        HorizontalAlignment="Center"
+                        Spacing="{StaticResource IrisSpacingMd}"
+                        Visibility="{x:Bind ViewModel.IsEmpty, Mode=OneWay}">
+                        <FontIcon
+                            FontSize="{StaticResource IrisIconLargeFontSize}"
+                            Foreground="{StaticResource IrisTextTertiaryBrush}"
+                            Glyph="&#xE787;"
+                            Style="{StaticResource IrisIconStyle}" />
+                        <TextBlock
+                            HorizontalAlignment="Center"
+                            Style="{StaticResource IrisBodyEmphasizedTextStyle}"
+                            Text="Aún no hay servicios" />
+                        <Button
+                            Width="{StaticResource IrisNewServiceButtonWidth}"
+                            Command="{x:Bind ViewModel.CreateServiceTypeCommand}"
+                            Content="Crear el primero"
+                            Style="{StaticResource IrisPrimaryButtonStyle}" />
+                    </StackPanel>
+
+                    <ProgressRing
+                        Width="32"
+                        Height="32"
+                        IsActive="{x:Bind ViewModel.IsLoading, Mode=OneWay}" />
+                </Grid>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!--  Editor: a page sheet that only closes with Cancelar / Guardar  -->
+        <controls:IrisModal
+            Grid.RowSpan="2"
+            IsOpen="{x:Bind ViewModel.IsEditorOpen, Mode=OneWay}"
+            PanelHeight="760"
+            PanelWidth="{StaticResource IrisPageModalWidth}">
+            <services:ServiceTypeEditorView ViewModel="{x:Bind ViewModel.Editor, Mode=OneWay}" />
+        </controls:IrisModal>
+    </Grid>
+</Page>

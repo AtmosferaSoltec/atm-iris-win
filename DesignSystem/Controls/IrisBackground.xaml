@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Ambient background (IRIS_SPEC §5.1), static version: the 3×3 mesh is approximated with
+    radial glows on the canvas color plus a vignette. Login and console both use the static look.
+-->
+<UserControl
+    x:Class="Iris.DesignSystem.Controls.IrisBackground"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    IsHitTestVisible="False"
+    IsTabStop="False">
+    <Grid Background="{StaticResource IrisCanvasBrush}">
+        <!--  top-left: glowViolet  -->
+        <Rectangle>
+            <Rectangle.Fill>
+                <RadialGradientBrush Center="0.05,0" GradientOrigin="0.05,0" RadiusX="0.75" RadiusY="0.95">
+                    <GradientStop Offset="0" Color="{StaticResource IrisGlowVioletColor}" />
+                    <GradientStop Offset="1" Color="#002A1658" />
+                </RadialGradientBrush>
+            </Rectangle.Fill>
+        </Rectangle>
+        <!--  top-right: glowIndigo  -->
+        <Rectangle>
+            <Rectangle.Fill>
+                <RadialGradientBrush Center="1,0" GradientOrigin="1,0" RadiusX="0.7" RadiusY="0.9">
+                    <GradientStop Offset="0" Color="{StaticResource IrisGlowIndigoColor}" />
+                    <GradientStop Offset="1" Color="#00131E5C" />
+                </RadialGradientBrush>
+            </Rectangle.Fill>
+        </Rectangle>
+        <!--  bottom-left: glowRose  -->
+        <Rectangle>
+            <Rectangle.Fill>
+                <RadialGradientBrush Center="0,1" GradientOrigin="0,1" RadiusX="0.65" RadiusY="0.85">
+                    <GradientStop Offset="0" Color="{StaticResource IrisGlowRoseColor}" />
+                    <GradientStop Offset="1" Color="#003D1235" />
+                </RadialGradientBrush>
+            </Rectangle.Fill>
+        </Rectangle>
+        <!--  bottom-center: glowEmber  -->
+        <Rectangle>
+            <Rectangle.Fill>
+                <RadialGradientBrush Center="0.5,1" GradientOrigin="0.5,1" RadiusX="0.5" RadiusY="0.7">
+                    <GradientStop Offset="0" Color="{StaticResource IrisGlowEmberColor}" />
+                    <GradientStop Offset="1" Color="#003A1E08" />
+                </RadialGradientBrush>
+            </Rectangle.Fill>
+        </Rectangle>
+        <!--  vignette: transparent -> canvas @ 70%  -->
+        <Rectangle>
+            <Rectangle.Fill>
+                <RadialGradientBrush Center="0.5,0.5" GradientOrigin="0.5,0.5" RadiusX="0.85" RadiusY="0.85">
+                    <GradientStop Offset="0.25" Color="#0007070B" />
+                    <GradientStop Offset="1" Color="#B307070B" />
+                </RadialGradientBrush>
+            </Rectangle.Fill>
+        </Rectangle>
+    </Grid>
+</UserControl>

@@ -1,0 +1,422 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!--  Home (IRIS_SPEC §6.1b): greeting, "Iniciar servicio" hero and tiles that open the church screens.  -->
+<Page
+    x:Class="Iris.Features.Home.HomePage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:Iris.DesignSystem.Controls"
+    xmlns:design="using:Iris.DesignSystem"
+    xmlns:home="using:Iris.Features.Home"
+    xmlns:projection="using:Iris.Shared.Projection"
+    xmlns:shell="using:Iris.Shell"
+    Background="Transparent">
+
+    <Page.Resources>
+        <DataTemplate x:Key="TypePillTemplate" x:DataType="home:ServiceTypeOptionViewModel">
+            <Button
+                AutomationProperties.ItemStatus="{x:Bind home:HomePage.SelectedStatus(IsSelected), Mode=OneWay}"
+                AutomationProperties.Name="{x:Bind Name}"
+                Background="{x:Bind design:IrisTheme.PillBackground(IsSelected), Mode=OneWay}"
+                Command="{x:Bind Owner.SelectServiceTypeCommand}"
+                CommandParameter="{x:Bind}"
+                Foreground="{x:Bind design:IrisTheme.PillForeground(IsSelected), Mode=OneWay}"
+                Style="{StaticResource IrisPillButtonStyle}">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Ellipse Fill="{x:Bind design:IrisTheme.HexBrush(Color)}" Style="{StaticResource IrisStatusDotStyle}" />
+                    <TextBlock Text="{x:Bind Name}" />
+                </StackPanel>
+            </Button>
+        </DataTemplate>
+
+        <DataTemplate x:Key="BlockPlanRowTemplate" x:DataType="home:BlockPlanRow">
+            <Grid Padding="0,6" ColumnSpacing="{StaticResource IrisSpacingSm}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Ellipse Fill="{x:Bind design:Spectrum.Brush(Index)}" Style="{StaticResource IrisStatusDotStyle}" />
+                <StackPanel Grid.Column="1" Spacing="2">
+                    <TextBlock Style="{StaticResource IrisCalloutEmphasizedTextStyle}" Text="{x:Bind Name}" />
+                    <TextBlock
+                        Style="{StaticResource IrisCaptionTextStyle}"
+                        Text="{x:Bind Leader}"
+                        Visibility="{x:Bind HasLeader}" />
+                </StackPanel>
+                <TextBlock
+                    Grid.Column="2"
+                    VerticalAlignment="Center"
+                    Style="{StaticResource IrisNumberTextStyle}"
+                    Text="{x:Bind Minutes}" />
+            </Grid>
+        </DataTemplate>
+
+        <DataTemplate x:Key="ServiceSummaryTemplate" x:DataType="home:ServiceTypeSummary">
+            <Grid ColumnSpacing="{StaticResource IrisSpacingSm}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Ellipse Fill="{x:Bind design:IrisTheme.HexBrush(Color)}" Style="{StaticResource IrisStatusDotStyle}" />
+                <TextBlock
+                    Grid.Column="1"
+                    VerticalAlignment="Center"
+                    MaxLines="1"
+                    Style="{StaticResource IrisCalloutEmphasizedTextStyle}"
+                    Text="{x:Bind Name}"
+                    TextTrimming="CharacterEllipsis" />
+                <controls:IrisChip
+                    Grid.Column="2"
+                    Glyph="&#xE916;"
+                    Text="Con tiempos"
+                    Tint="{x:Bind design:Bind.Color('IrisSuccessColor')}"
+                    Visibility="{x:Bind TracksTime}" />
+                <controls:IrisChip
+                    Grid.Column="2"
+                    Text="Solo proyección"
+                    Tint="{x:Bind design:Bind.Color('IrisTextSecondaryColor')}"
+                    Visibility="{x:Bind IsProjectionOnly}" />
+            </Grid>
+        </DataTemplate>
+
+        <DataTemplate x:Key="ModuleStatusTemplate" x:DataType="home:ModuleStatus">
+            <Grid ColumnSpacing="{StaticResource IrisSpacingXs}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Style="{StaticResource IrisCalloutEmphasizedTextStyle}" Text="{x:Bind Name}" />
+                <Ellipse
+                    Grid.Column="1"
+                    Fill="{x:Bind design:IrisTheme.StatusBrush(IsOn)}"
+                    Style="{StaticResource IrisStatusDotStyle}" />
+                <TextBlock
+                    Grid.Column="2"
+                    VerticalAlignment="Center"
+                    Style="{StaticResource IrisCaptionTextStyle}"
+                    Text="{x:Bind StatusText}" />
+            </Grid>
+        </DataTemplate>
+
+        <DataTemplate x:Key="AvatarTemplate" x:DataType="home:AvatarItem">
+            <controls:IrisAvatar
+                Margin="0,0,-10,0"
+                ColorIndex="{x:Bind ColorIndex}"
+                Initials="{x:Bind Initials}"
+                Size="{StaticResource IrisAvatarRowSize}" />
+        </DataTemplate>
+    </Page.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="{StaticResource IrisTopBarRowHeight}" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <shell:AppTopBar />
+
+        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" HorizontalScrollMode="Disabled" Visibility="{x:Bind design:Bind.Collapsed(ViewModel.IsLoading), Mode=OneWay}">
+            <!--  Outer star columns split the leftover width evenly, so the capped content column stays centered.  -->
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="1280*" MaxWidth="{StaticResource IrisContentWidth}" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+            <StackPanel
+                Grid.Column="1"
+                Padding="{StaticResource IrisPagePadding}"
+                Spacing="{StaticResource IrisSpacingXl}">
+
+                <!--  Greeting  -->
+                <StackPanel Spacing="{StaticResource IrisSpacingXs}">
+                    <TextBlock
+                        Foreground="{StaticResource IrisAccentGradientBrush}"
+                        Style="{StaticResource IrisOverlineTextStyle}"
+                        Text="{x:Bind ViewModel.DateOverline, Mode=OneWay}" />
+                    <TextBlock AutomationProperties.HeadingLevel="Level1" Style="{StaticResource IrisGreetingTextStyle}">
+                        <Run Text="{x:Bind ViewModel.Greeting, Mode=OneWay}" /><Run Text=" " /><Run Foreground="{StaticResource IrisAccentGradientBrush}" Text="{x:Bind ViewModel.ChurchName, Mode=OneWay}" />
+                    </TextBlock>
+                    <TextBlock Style="{StaticResource IrisSubtitleTextStyle}" Text="{x:Bind ViewModel.DisplayStatusText, Mode=OneWay}" />
+                </StackPanel>
+
+                <!--  Hero card  -->
+                <Grid
+                    Background="{StaticResource IrisCanvasElevatedBrush}"
+                    BorderBrush="{StaticResource IrisSurfaceBorderBrush}"
+                    BorderThickness="{StaticResource IrisHairline}"
+                    CornerRadius="{StaticResource IrisRadiusXxl}">
+                    <Rectangle Fill="{x:Bind design:Bind.HeroGlow(ViewModel.HeroColor), Mode=OneWay}" />
+                    <Rectangle>
+                        <Rectangle.Fill>
+                            <RadialGradientBrush Center="1,0" GradientOrigin="1,0" RadiusX="0.7" RadiusY="0.95">
+                                <GradientStop Offset="0" Color="{StaticResource IrisGlowVioletColor}" />
+                                <GradientStop Offset="1" Color="#002A1658" />
+                            </RadialGradientBrush>
+                        </Rectangle.Fill>
+                    </Rectangle>
+                    <controls:IrisMark
+                        Width="{StaticResource IrisHeroMarkSize}"
+                        Height="{StaticResource IrisHeroMarkSize}"
+                        Margin="0,-80,-200,-80"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center"
+                        Opacity="{StaticResource IrisHeroMarkOpacity}" />
+
+                    <Grid Padding="{StaticResource IrisHeroPadding}" ColumnSpacing="{StaticResource IrisSpacingXxl}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="{StaticResource IrisHeroSideColumnWidth}" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel VerticalAlignment="Center" Spacing="{StaticResource IrisSpacingMd}">
+                            <StackPanel
+                                Orientation="Horizontal"
+                                Spacing="{StaticResource IrisSpacingXs}"
+                                Visibility="{x:Bind ViewModel.HasServiceTypes, Mode=OneWay}">
+                                <controls:IrisLiveDot Visibility="{x:Bind ViewModel.IsToday, Mode=OneWay}" />
+                                <TextBlock
+                                    Foreground="{StaticResource IrisTextSecondaryBrush}"
+                                    Style="{StaticResource IrisOverlineTextStyle}"
+                                    Text="{x:Bind ViewModel.HeroOverline, Mode=OneWay}" />
+                            </StackPanel>
+                            <TextBlock
+                                AutomationProperties.HeadingLevel="Level2"
+                                Style="{StaticResource IrisHeroTitleTextStyle}"
+                                Text="{x:Bind ViewModel.HeroTitle, Mode=OneWay}" />
+                            <TextBlock
+                                MaxWidth="{StaticResource IrisReadableWidth}"
+                                HorizontalAlignment="Left"
+                                Style="{StaticResource IrisSubtitleTextStyle}"
+                                Text="Configura tus tipos de servicio y, si quieres, sus bloques de tiempo."
+                                Visibility="{x:Bind ViewModel.NeedsServiceSetup, Mode=OneWay}" />
+
+                            <StackPanel
+                                Orientation="Horizontal"
+                                Spacing="{StaticResource IrisSpacingLg}"
+                                Visibility="{x:Bind ViewModel.HasServiceTypes, Mode=OneWay}">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <FontIcon
+                                        FontSize="{StaticResource IrisIconSmallFontSize}"
+                                        Foreground="{StaticResource IrisTextSecondaryBrush}"
+                                        Glyph="&#xE787;"
+                                        Style="{StaticResource IrisIconStyle}" />
+                                    <TextBlock Style="{StaticResource IrisCalloutTextStyle}" Text="{x:Bind ViewModel.ScheduleText, Mode=OneWay}" />
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <FontIcon
+                                        FontSize="{StaticResource IrisIconSmallFontSize}"
+                                        Foreground="{StaticResource IrisTextSecondaryBrush}"
+                                        Glyph="&#xE916;"
+                                        Style="{StaticResource IrisIconStyle}" />
+                                    <TextBlock Style="{StaticResource IrisCalloutTextStyle}" Text="{x:Bind ViewModel.BlocksText, Mode=OneWay}" />
+                                </StackPanel>
+                            </StackPanel>
+
+                            <ItemsRepeater
+                                Margin="0,8,0,8"
+                                ItemTemplate="{StaticResource TypePillTemplate}"
+                                ItemsSource="{x:Bind ViewModel.TypeOptions}"
+                                Visibility="{x:Bind ViewModel.HasServiceTypes, Mode=OneWay}">
+                                <ItemsRepeater.Layout>
+                                    <StackLayout Orientation="Horizontal" Spacing="{StaticResource IrisSpacingXs}" />
+                                </ItemsRepeater.Layout>
+                            </ItemsRepeater>
+
+                            <Button
+                                Width="{StaticResource IrisHeroButtonWidth}"
+                                HorizontalAlignment="Left"
+                                Command="{x:Bind ViewModel.StartSelectedServiceCommand}"
+                                Style="{StaticResource IrisPrimaryButtonStyle}"
+                                Visibility="{x:Bind ViewModel.HasServiceTypes, Mode=OneWay}">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <FontIcon
+                                        FontSize="{StaticResource IrisCaptionFontSize}"
+                                        Glyph="&#xE768;"
+                                        Style="{StaticResource IrisIconStyle}" />
+                                    <TextBlock Text="Iniciar servicio" />
+                                </StackPanel>
+                            </Button>
+                            <Button
+                                Width="{StaticResource IrisHeroButtonWidth}"
+                                HorizontalAlignment="Left"
+                                Command="{x:Bind ViewModel.OpenServicesCommand}"
+                                Content="Configurar servicios"
+                                Style="{StaticResource IrisPrimaryButtonStyle}"
+                                Visibility="{x:Bind ViewModel.NeedsServiceSetup, Mode=OneWay}" />
+                        </StackPanel>
+
+                        <!--  Right: block plan, or the church logo on a mini TV  -->
+                        <StackPanel
+                            Grid.Column="1"
+                            VerticalAlignment="Center"
+                            Spacing="{StaticResource IrisSpacingMd}"
+                            Visibility="{x:Bind ViewModel.ShowsBlockPlan, Mode=OneWay}">
+                            <controls:IrisSectionHeader Title="Bloques">
+                                <controls:IrisSectionHeader.Accessory>
+                                    <TextBlock Style="{StaticResource IrisNumberTextStyle}" Text="{x:Bind ViewModel.BlocksTotalText, Mode=OneWay}" />
+                                </controls:IrisSectionHeader.Accessory>
+                            </controls:IrisSectionHeader>
+                            <controls:IrisBlockTimeline Minutes="{x:Bind ViewModel.BlockMinutes, Mode=OneWay}" />
+                            <ItemsRepeater ItemTemplate="{StaticResource BlockPlanRowTemplate}" ItemsSource="{x:Bind ViewModel.BlockPlan, Mode=OneWay}" />
+                        </StackPanel>
+                        <StackPanel
+                            Grid.Column="1"
+                            VerticalAlignment="Center"
+                            Spacing="{StaticResource IrisSpacingSm}"
+                            Visibility="{x:Bind ViewModel.ShowsLogoPreview, Mode=OneWay}">
+                            <Grid CornerRadius="{StaticResource IrisRadiusLg}">
+                                <projection:ProjectionCanvas Frame="{x:Bind ViewModel.LogoFrame, Mode=OneWay}" />
+                                <Border
+                                    BorderBrush="{StaticResource IrisStrokeStrongBrush}"
+                                    BorderThickness="{StaticResource IrisHairline}"
+                                    CornerRadius="{StaticResource IrisRadiusLg}" />
+                            </Grid>
+                            <TextBlock
+                                Style="{StaticResource IrisCaptionTextStyle}"
+                                Text="Este servicio no controla tiempos: solo proyección."
+                                TextAlignment="Center"
+                                Visibility="{x:Bind ViewModel.ShowsProjectionOnlyNote, Mode=OneWay}" />
+                        </StackPanel>
+                    </Grid>
+                </Grid>
+
+                <!--  Tiles: row 1 Servicios · Biblioteca; row 2 Tiempos · Personas · Módulos (one row without time control)  -->
+                <Grid
+                    x:Name="TilesGrid"
+                    ColumnSpacing="{StaticResource IrisSpacingMd}"
+                    RowSpacing="{StaticResource IrisSpacingMd}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <controls:IrisTile
+                        x:Name="ServicesTile"
+                        Title="Servicios"
+                        Command="{x:Bind ViewModel.OpenServicesCommand}"
+                        Glyph="&#xE787;"
+                        Subtitle="{x:Bind ViewModel.ServiceTypesText, Mode=OneWay}"
+                        Tint="{x:Bind design:Bind.Color('IrisEmberColor')}">
+                        <ItemsRepeater ItemTemplate="{StaticResource ServiceSummaryTemplate}" ItemsSource="{x:Bind ViewModel.ServiceSummaries, Mode=OneWay}">
+                            <ItemsRepeater.Layout>
+                                <StackLayout Spacing="{StaticResource IrisSpacingSm}" />
+                            </ItemsRepeater.Layout>
+                        </ItemsRepeater>
+                    </controls:IrisTile>
+
+                    <controls:IrisTile
+                        x:Name="LibraryTile"
+                        Title="Biblioteca"
+                        Glyph="&#xE8F1;"
+                        Subtitle="Tu contenido"
+                        Tint="{x:Bind design:Bind.Color('IrisVioletColor')}">
+                        <Grid ColumnSpacing="{StaticResource IrisSpacingMd}" RowSpacing="{StaticResource IrisSpacingMd}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource IrisMetricTextStyle}" Text="{x:Bind ViewModel.LyricsCount, Mode=OneWay}" />
+                                <TextBlock Style="{StaticResource IrisCaptionTextStyle}" Text="Letras" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Visibility="{x:Bind ViewModel.ShowsMultimedia, Mode=OneWay}">
+                                <TextBlock Style="{StaticResource IrisMetricTextStyle}" Text="{x:Bind ViewModel.MusicCount, Mode=OneWay}" />
+                                <TextBlock Style="{StaticResource IrisCaptionTextStyle}" Text="Música" />
+                            </StackPanel>
+                            <StackPanel Grid.Row="1" Visibility="{x:Bind ViewModel.ShowsMultimedia, Mode=OneWay}">
+                                <TextBlock Style="{StaticResource IrisMetricTextStyle}" Text="{x:Bind ViewModel.ImagesCount, Mode=OneWay}" />
+                                <TextBlock Style="{StaticResource IrisCaptionTextStyle}" Text="Imágenes" />
+                            </StackPanel>
+                            <StackPanel
+                                Grid.Row="1"
+                                Grid.Column="1"
+                                Visibility="{x:Bind ViewModel.ShowsMultimedia, Mode=OneWay}">
+                                <TextBlock Style="{StaticResource IrisMetricTextStyle}" Text="{x:Bind ViewModel.VideosCount, Mode=OneWay}" />
+                                <TextBlock Style="{StaticResource IrisCaptionTextStyle}" Text="Videos" />
+                            </StackPanel>
+                        </Grid>
+                    </controls:IrisTile>
+
+                    <controls:IrisTile
+                        x:Name="TimesTile"
+                        Title="Tiempos"
+                        Command="{x:Bind ViewModel.OpenTimesCommand}"
+                        Glyph="&#xE916;"
+                        Subtitle="{x:Bind ViewModel.RecordsText, Mode=OneWay}"
+                        Tint="{x:Bind design:Bind.Color('IrisCoralColor')}"
+                        Visibility="{x:Bind ViewModel.ShowsTimeControl, Mode=OneWay}" />
+
+                    <controls:IrisTile
+                        x:Name="PeopleTile"
+                        Title="Personas"
+                        Command="{x:Bind ViewModel.OpenPeopleCommand}"
+                        Glyph="&#xE716;"
+                        Subtitle="Responsables de bloques"
+                        Tint="{x:Bind design:Bind.Color('IrisRoseColor')}"
+                        Visibility="{x:Bind ViewModel.ShowsTimeControl, Mode=OneWay}">
+                        <StackPanel Spacing="{StaticResource IrisSpacingSm}">
+                            <StackPanel Orientation="Horizontal">
+                                <ItemsRepeater ItemTemplate="{StaticResource AvatarTemplate}" ItemsSource="{x:Bind ViewModel.PeopleAvatars, Mode=OneWay}">
+                                    <ItemsRepeater.Layout>
+                                        <StackLayout Orientation="Horizontal" />
+                                    </ItemsRepeater.Layout>
+                                </ItemsRepeater>
+                                <Grid
+                                    Width="{StaticResource IrisAvatarRowSize}"
+                                    Height="{StaticResource IrisAvatarRowSize}"
+                                    Visibility="{x:Bind ViewModel.HasMorePeople, Mode=OneWay}">
+                                    <Ellipse
+                                        Fill="{StaticResource IrisSurfaceRaisedBrush}"
+                                        Stroke="{StaticResource IrisCanvasElevatedBrush}"
+                                        StrokeThickness="2" />
+                                    <TextBlock
+                                        HorizontalAlignment="Center"
+                                        VerticalAlignment="Center"
+                                        Style="{StaticResource IrisCaptionTextStyle}"
+                                        Text="{x:Bind ViewModel.MorePeopleText, Mode=OneWay}" />
+                                </Grid>
+                            </StackPanel>
+                            <TextBlock Style="{StaticResource IrisCaptionTextStyle}" Text="{x:Bind ViewModel.PeopleText, Mode=OneWay}" />
+                        </StackPanel>
+                    </controls:IrisTile>
+
+                    <controls:IrisTile
+                        x:Name="ModulesTile"
+                        Title="Módulos"
+                        Command="{x:Bind ViewModel.OpenModulesCommand}"
+                        Glyph="&#xECA5;"
+                        Subtitle="Elige qué usar"
+                        Tint="{x:Bind design:Bind.Color('IrisIndigoColor')}">
+                        <ItemsRepeater ItemTemplate="{StaticResource ModuleStatusTemplate}" ItemsSource="{x:Bind ViewModel.ModuleStatuses, Mode=OneWay}">
+                            <ItemsRepeater.Layout>
+                                <StackLayout Spacing="{StaticResource IrisSpacingXs}" />
+                            </ItemsRepeater.Layout>
+                        </ItemsRepeater>
+                    </controls:IrisTile>
+                </Grid>
+            </StackPanel>
+            </Grid>
+        </ScrollViewer>
+
+        <ProgressRing
+            Grid.Row="1"
+            Width="36"
+            Height="36"
+            IsActive="{x:Bind ViewModel.IsLoading, Mode=OneWay}" />
+    </Grid>
+</Page>

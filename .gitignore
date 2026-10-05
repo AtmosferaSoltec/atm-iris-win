@@ -1,0 +1,49 @@
+﻿## Visual Studio / .NET
+.vs/
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+ARM64/
+*.user
+*.suo
+*.rsuser
+*.userprefs
+AppPackages/
+BundleArtifacts/
+TestResults/
+*.log
+*.binlog
+*.tmp
+*.cache
+
+## Packaging / signing
+*.pfx
+*.p12
+*.snk
+*.pem
+*.key
+*.cer
+*.appxupload
+*.msix
+*.msixbundle
+*.appx
+
+## Secrets / local config
+.env
+.env.*
+appsettings.*.local.json
+secrets.json
+*.pubxml.user
+
+## Claude Code local state
+.claude/
+CLAUDE.local.md
+
+## OS / editor
+Thumbs.db
+.DS_Store
+.idea/
+.vscode/

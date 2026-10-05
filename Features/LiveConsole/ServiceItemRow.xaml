@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    SERVICIO row (IRIS_SPEC §6.2): number, kind icon, title/subtitle; selected = raised fill + accent bar.
+    Desktop additions: trash on hover, swipe-to-delete on touch, right-click context menu.
+-->
+<UserControl
+    x:Class="Iris.Features.LiveConsole.ServiceItemRow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:design="using:Iris.DesignSystem"
+    IsTabStop="False"
+    PointerEntered="OnPointerEntered"
+    PointerExited="OnPointerExited"
+    PointerCanceled="OnPointerExited">
+
+    <SwipeControl CornerRadius="{StaticResource IrisRadiusMd}">
+        <SwipeControl.RightItems>
+            <SwipeItems Mode="Execute">
+                <SwipeItem
+                    Background="{StaticResource IrisDangerBrush}"
+                    Command="{x:Bind Item.Owner.RemoveItemCommand, Mode=OneWay}"
+                    CommandParameter="{x:Bind Item, Mode=OneWay}"
+                    Foreground="{StaticResource IrisTextInverseBrush}"
+                    Text="Eliminar">
+                    <SwipeItem.IconSource>
+                        <FontIconSource Glyph="&#xE74D;" />
+                    </SwipeItem.IconSource>
+                </SwipeItem>
+            </SwipeItems>
+        </SwipeControl.RightItems>
+
+        <Grid
+            x:Name="Root"
+            Background="Transparent"
+            CornerRadius="{StaticResource IrisRadiusMd}">
+            <Grid.ContextFlyout>
+                <MenuFlyout>
+                    <MenuFlyoutItem
+                        Command="{x:Bind Item.Owner.DuplicateItemCommand, Mode=OneWay}"
+                        CommandParameter="{x:Bind Item, Mode=OneWay}"
+                        Text="Duplicar">
+                        <MenuFlyoutItem.Icon>
+                            <FontIcon Glyph="&#xE8C8;" />
+                        </MenuFlyoutItem.Icon>
+                    </MenuFlyoutItem>
+                    <MenuFlyoutItem
+                        Command="{x:Bind Item.Owner.MoveItemUpCommand, Mode=OneWay}"
+                        CommandParameter="{x:Bind Item, Mode=OneWay}"
+                        IsEnabled="{x:Bind Item.CanMoveUp, Mode=OneWay}"
+                        Text="Mover arriba">
+                        <MenuFlyoutItem.Icon>
+                            <FontIcon Glyph="&#xE74A;" />
+                        </MenuFlyoutItem.Icon>
+                    </MenuFlyoutItem>
+                    <MenuFlyoutItem
+                        Command="{x:Bind Item.Owner.MoveItemDownCommand, Mode=OneWay}"
+                        CommandParameter="{x:Bind Item, Mode=OneWay}"
+                        IsEnabled="{x:Bind Item.CanMoveDown, Mode=OneWay}"
+                        Text="Mover abajo">
+                        <MenuFlyoutItem.Icon>
+                            <FontIcon Glyph="&#xE74B;" />
+                        </MenuFlyoutItem.Icon>
+                    </MenuFlyoutItem>
+                    <MenuFlyoutSeparator />
+                    <MenuFlyoutItem
+                        Command="{x:Bind Item.Owner.RemoveItemCommand, Mode=OneWay}"
+                        CommandParameter="{x:Bind Item, Mode=OneWay}"
+                        Foreground="{StaticResource IrisDangerBrush}"
+                        Text="Eliminar">
+                        <MenuFlyoutItem.Icon>
+                            <FontIcon Foreground="{StaticResource IrisDangerBrush}" Glyph="&#xE74D;" />
+                        </MenuFlyoutItem.Icon>
+                    </MenuFlyoutItem>
+                </MenuFlyout>
+            </Grid.ContextFlyout>
+
+            <!--  Selected: raised fill + 3px accent bar  -->
+            <Border
+                Background="{StaticResource IrisSurfaceRaisedBrush}"
+                CornerRadius="{StaticResource IrisRadiusMd}"
+                Visibility="{x:Bind Item.IsSelected, Mode=OneWay}" />
+            <Border
+                x:Name="HoverFill"
+                Background="{StaticResource IrisSurfaceBrush}"
+                CornerRadius="{StaticResource IrisRadiusMd}"
+                Visibility="Collapsed" />
+            <Rectangle
+                Width="{StaticResource IrisSelectionBarWidth}"
+                Margin="0,10"
+                HorizontalAlignment="Left"
+                Fill="{StaticResource IrisAccentGradientBrush}"
+                RadiusX="1.5"
+                RadiusY="1.5"
+                Visibility="{x:Bind Item.IsSelected, Mode=OneWay}" />
+
+            <Grid Padding="{StaticResource IrisRowPadding}" ColumnSpacing="{StaticResource IrisSpacingSm}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <TextBlock
+                    VerticalAlignment="Center"
+                    Style="{StaticResource IrisNumberTextStyle}"
+                    Text="{x:Bind Item.Number, Mode=OneWay}" />
+
+                <Grid
+                    Grid.Column="1"
+                    Width="{StaticResource IrisRowIconSize}"
+                    Height="{StaticResource IrisRowIconSize}"
+                    Background="{x:Bind design:KindStyle.TintBrush(Item.Kind), Mode=OneWay}"
+                    CornerRadius="{StaticResource IrisRadiusSm}">
+                    <FontIcon
+                        Foreground="{x:Bind design:KindStyle.Brush(Item.Kind), Mode=OneWay}"
+                        Glyph="{x:Bind design:KindStyle.Glyph(Item.Kind), Mode=OneWay}"
+                        Style="{StaticResource IrisIconStyle}" />
+                </Grid>
+
+                <StackPanel
+                    Grid.Column="2"
+                    VerticalAlignment="Center"
+                    Spacing="2">
+                    <TextBlock
+                        MaxLines="1"
+                        Style="{StaticResource IrisCalloutEmphasizedTextStyle}"
+                        Text="{x:Bind Item.Title, Mode=OneWay}"
+                        TextTrimming="CharacterEllipsis"
+                        TextWrapping="NoWrap" />
+                    <TextBlock
+                        MaxLines="1"
+                        Style="{StaticResource IrisCaptionTextStyle}"
+                        Text="{x:Bind Item.Subtitle, Mode=OneWay}"
+                        TextTrimming="CharacterEllipsis"
+                        TextWrapping="NoWrap" />
+                </StackPanel>
+
+                <Button
+                    x:Name="TrashButton"
+                    Grid.Column="3"
+                    Width="32"
+                    Height="32"
+                    AutomationProperties.Name="Eliminar"
+                    Command="{x:Bind Item.Owner.RemoveItemCommand, Mode=OneWay}"
+                    CommandParameter="{x:Bind Item, Mode=OneWay}"
+                    Style="{StaticResource IrisSubtleIconButtonStyle}"
+                    ToolTipService.ToolTip="Eliminar"
+                    Visibility="Collapsed">
+                    <FontIcon Glyph="&#xE74D;" Style="{StaticResource IrisIconStyle}" />
+                </Button>
+            </Grid>
+        </Grid>
+    </SwipeControl>
+</UserControl>

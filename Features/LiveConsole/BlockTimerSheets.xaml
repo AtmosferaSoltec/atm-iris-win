@@ -1,0 +1,351 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--  Block-timer sheets and dialogs (IRIS_SPEC §6.9). They cover the whole console.  -->
+<UserControl
+    x:Class="Iris.Features.LiveConsole.BlockTimerSheets"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:console="using:Iris.Features.LiveConsole"
+    xmlns:controls="using:Iris.DesignSystem.Controls"
+    xmlns:design="using:Iris.DesignSystem"
+    IsTabStop="False">
+
+    <UserControl.Resources>
+        <DataTemplate x:Key="PickerPersonTemplate" x:DataType="console:PickerPersonViewModel">
+            <Button
+                AutomationProperties.ItemStatus="{x:Bind console:BlockTimerSheets.SelectedStatus(IsSelected), Mode=OneWay}"
+                AutomationProperties.Name="{x:Bind Name}"
+                Command="{x:Bind Owner.SelectCommand}"
+                CommandParameter="{x:Bind}"
+                Style="{StaticResource IrisPressableButtonStyle}">
+                <Grid
+                    Padding="{StaticResource IrisRowPadding}"
+                    Background="{x:Bind console:BlockTimerSheets.RowBackground(IsSelected), Mode=OneWay}"
+                    ColumnSpacing="{StaticResource IrisSpacingSm}"
+                    CornerRadius="{StaticResource IrisRadiusMd}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <controls:IrisAvatar
+                        ColorIndex="{x:Bind ColorIndex}"
+                        Initials="{x:Bind Initials}"
+                        Size="{StaticResource IrisRowIconSize}" />
+                    <TextBlock
+                        Grid.Column="1"
+                        VerticalAlignment="Center"
+                        Style="{StaticResource IrisCalloutEmphasizedTextStyle}"
+                        Text="{x:Bind Name}" />
+                    <controls:IrisChip
+                        Grid.Column="2"
+                        VerticalAlignment="Center"
+                        Text="Sugerido"
+                        Tint="{x:Bind design:Bind.Color('IrisEmberColor')}"
+                        Visibility="{x:Bind IsSuggested}" />
+                    <controls:IrisCheckmark
+                        Grid.Column="3"
+                        VerticalAlignment="Center"
+                        IsChecked="{x:Bind IsSelected, Mode=OneWay}" />
+                </Grid>
+            </Button>
+        </DataTemplate>
+
+        <DataTemplate x:Key="PendingBlockTemplate" x:DataType="console:PendingBlockViewModel">
+            <Grid
+                Padding="8,8,8,8"
+                Background="{StaticResource IrisSurfaceBrush}"
+                BorderBrush="{StaticResource IrisStrokeBrush}"
+                BorderThickness="{StaticResource IrisHairline}"
+                ColumnSpacing="{StaticResource IrisSpacingSm}"
+                CornerRadius="{StaticResource IrisRadiusMd}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <FontIcon
+                    Foreground="{StaticResource IrisTextTertiaryBrush}"
+                    Glyph="&#xE76F;"
+                    Style="{StaticResource IrisIconStyle}" />
+                <TextBox
+                    Grid.Column="1"
+                    VerticalAlignment="Center"
+                    AutomationProperties.Name="Nombre del bloque"
+                    IsEnabled="{x:Bind IsActive, Mode=OneWay}"
+                    Text="{x:Bind Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                <NumberBox
+                    Grid.Column="2"
+                    Width="{StaticResource IrisMinutesBoxWidth}"
+                    VerticalAlignment="Center"
+                    AutomationProperties.Name="Minutos previstos"
+                    IsEnabled="{x:Bind IsActive, Mode=OneWay}"
+                    Maximum="240"
+                    Minimum="1"
+                    SpinButtonPlacementMode="Inline"
+                    Value="{x:Bind Minutes, Mode=TwoWay}" />
+                <ComboBox
+                    Grid.Column="3"
+                    Width="{StaticResource IrisLeaderMenuWidth}"
+                    VerticalAlignment="Center"
+                    AutomationProperties.Name="Responsable"
+                    IsEnabled="{x:Bind IsActive, Mode=OneWay}"
+                    ItemsSource="{x:Bind LeaderOptions}"
+                    SelectedItem="{x:Bind Leader, Mode=TwoWay}" />
+                <Button
+                    Grid.Column="4"
+                    MinWidth="96"
+                    VerticalAlignment="Center"
+                    Command="{x:Bind Owner.ToggleSkipCommand}"
+                    CommandParameter="{x:Bind}"
+                    Content="{x:Bind SkipText, Mode=OneWay}"
+                    Style="{StaticResource IrisPillButtonStyle}" />
+            </Grid>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <Grid>
+        <!--  ¿Quién dirige {bloque}?  -->
+        <controls:IrisModal
+            CloseCommand="{x:Bind ViewModel.CloseResponsiblePickerCommand, Mode=OneWay}"
+            IsOpen="{x:Bind ViewModel.IsPickingResponsible, Mode=OneWay, FallbackValue=False}"
+            PanelHeight="640"
+            PanelWidth="{StaticResource IrisFormModalWidth}">
+            <Grid Padding="{StaticResource IrisSheetPadding}" RowSpacing="{StaticResource IrisSpacingMd}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <Grid>
+                    <TextBlock
+                        VerticalAlignment="Center"
+                        AutomationProperties.HeadingLevel="Level2"
+                        Style="{StaticResource IrisTitleTextStyle}"
+                        Text="{x:Bind ViewModel.ResponsiblePicker.Title, Mode=OneWay, FallbackValue=''}" />
+                    <Button
+                        HorizontalAlignment="Right"
+                        AutomationProperties.Name="Cerrar"
+                        Command="{x:Bind ViewModel.CloseResponsiblePickerCommand, Mode=OneWay}"
+                        Style="{StaticResource IrisIconButtonStyle}"
+                        ToolTipService.ToolTip="Cerrar">
+                        <FontIcon Glyph="&#xE711;" Style="{StaticResource IrisIconStyle}" />
+                    </Button>
+                </Grid>
+                <ScrollViewer Grid.Row="1" Padding="0,0,12,0">
+                    <ItemsRepeater ItemTemplate="{StaticResource PickerPersonTemplate}" ItemsSource="{x:Bind ViewModel.ResponsiblePicker.People, Mode=OneWay, FallbackValue={x:Null}}">
+                        <ItemsRepeater.Layout>
+                            <StackLayout Spacing="4" />
+                        </ItemsRepeater.Layout>
+                    </ItemsRepeater>
+                </ScrollViewer>
+                <Grid Grid.Row="2" ColumnSpacing="{StaticResource IrisSpacingSm}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <controls:IrisTextField
+                        ErrorMessage="{x:Bind ViewModel.ResponsiblePicker.NewNameError, Mode=OneWay, FallbackValue=''}"
+                        Glyph="&#xE8FA;"
+                        Kind="Name"
+                        Label="Agregar persona"
+                        Placeholder="Nombre y apellido"
+                        Submitted="OnPickerAddSubmitted"
+                        Text="{x:Bind ViewModel.ResponsiblePicker.NewName, Mode=TwoWay, FallbackValue=''}" />
+                    <Button
+                        Grid.Column="1"
+                        Margin="{StaticResource IrisFieldPillOffset}"
+                        VerticalAlignment="Top"
+                        Command="{x:Bind ViewModel.ResponsiblePicker.AddPersonCommand, Mode=OneWay}"
+                        Content="Agregar"
+                        Style="{StaticResource IrisPillButtonStyle}" />
+                </Grid>
+                <Grid Grid.Row="3" ColumnSpacing="{StaticResource IrisSpacingMd}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Button
+                        HorizontalAlignment="Left"
+                        Command="{x:Bind ViewModel.ResponsiblePicker.ConfirmWithoutLeaderCommand, Mode=OneWay}"
+                        Content="Sin responsable"
+                        Style="{StaticResource IrisLinkButtonStyle}" />
+                    <Button
+                        Grid.Column="1"
+                        MinWidth="{StaticResource IrisNextBlockButtonWidth}"
+                        Command="{x:Bind ViewModel.ResponsiblePicker.ConfirmCommand, Mode=OneWay}"
+                        Content="{x:Bind ViewModel.ResponsiblePicker.ConfirmText, Mode=OneWay, FallbackValue=''}"
+                        Style="{StaticResource IrisPrimaryButtonStyle}" />
+                </Grid>
+            </Grid>
+        </controls:IrisModal>
+
+        <!--  Agregar bloque  -->
+        <controls:IrisModal
+            CloseCommand="{x:Bind ViewModel.CloseAddBlockCommand, Mode=OneWay}"
+            IsOpen="{x:Bind ViewModel.IsAddingBlock, Mode=OneWay, FallbackValue=False}"
+            PanelWidth="{StaticResource IrisFormModalWidth}">
+            <StackPanel Padding="{StaticResource IrisSheetPadding}" Spacing="{StaticResource IrisSpacingLg}">
+                <Grid>
+                    <TextBlock
+                        VerticalAlignment="Center"
+                        AutomationProperties.HeadingLevel="Level2"
+                        Style="{StaticResource IrisTitleTextStyle}"
+                        Text="Agregar bloque" />
+                    <Button
+                        HorizontalAlignment="Right"
+                        Command="{x:Bind ViewModel.CloseAddBlockCommand, Mode=OneWay}"
+                        Content="Cancelar"
+                        Style="{StaticResource IrisPillButtonStyle}" />
+                </Grid>
+                <controls:IrisTextField
+                    Glyph="&#xE8A5;"
+                    Label="Nombre"
+                    Placeholder="Ej. Santa Cena"
+                    Text="{x:Bind ViewModel.AddBlockSheet.Name, Mode=TwoWay, FallbackValue=''}" />
+                <Grid ColumnSpacing="{StaticResource IrisSpacingMd}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <NumberBox
+                        Width="{StaticResource IrisMinutesBoxWidth}"
+                        Header="Minutos previstos"
+                        Maximum="240"
+                        Minimum="1"
+                        SpinButtonPlacementMode="Inline"
+                        Value="{x:Bind ViewModel.AddBlockSheet.Minutes, Mode=TwoWay, FallbackValue=10}" />
+                    <ComboBox
+                        Grid.Column="1"
+                        HorizontalAlignment="Stretch"
+                        Header="Responsable"
+                        ItemsSource="{x:Bind ViewModel.AddBlockSheet.LeaderOptions, Mode=OneWay, FallbackValue={x:Null}}"
+                        SelectedItem="{x:Bind ViewModel.AddBlockSheet.Leader, Mode=TwoWay, FallbackValue={x:Null}}" />
+                </Grid>
+                <Button
+                    Command="{x:Bind ViewModel.AddBlockSheet.AddCommand, Mode=OneWay}"
+                    Content="Agregar"
+                    IsEnabled="{x:Bind ViewModel.AddBlockSheet.CanAdd, Mode=OneWay, FallbackValue=False}"
+                    Style="{StaticResource IrisPrimaryButtonStyle}" />
+            </StackPanel>
+        </controls:IrisModal>
+
+        <!--  Bloques pendientes  -->
+        <controls:IrisModal
+            CloseCommand="{x:Bind ViewModel.ClosePendingEditorCommand, Mode=OneWay}"
+            IsOpen="{x:Bind ViewModel.IsEditingPendingBlocks, Mode=OneWay, FallbackValue=False}"
+            PanelHeight="600"
+            PanelWidth="{StaticResource IrisPageModalWidth}">
+            <Grid Padding="{StaticResource IrisSheetPadding}" RowSpacing="{StaticResource IrisSpacingMd}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <Grid>
+                    <TextBlock
+                        VerticalAlignment="Center"
+                        AutomationProperties.HeadingLevel="Level2"
+                        Style="{StaticResource IrisTitleTextStyle}"
+                        Text="Bloques pendientes" />
+                    <Button
+                        HorizontalAlignment="Right"
+                        Command="{x:Bind ViewModel.ClosePendingEditorCommand, Mode=OneWay}"
+                        Content="Listo"
+                        Style="{StaticResource IrisPillButtonStyle}" />
+                </Grid>
+                <ListView
+                    Grid.Row="1"
+                    AllowDrop="True"
+                    AutomationProperties.Name="Bloques pendientes"
+                    CanDragItems="True"
+                    CanReorderItems="True"
+                    ItemContainerStyle="{StaticResource IrisListRowContainerStyle}"
+                    ItemTemplate="{StaticResource PendingBlockTemplate}"
+                    ItemsSource="{x:Bind ViewModel.PendingBlocks, Mode=OneWay, FallbackValue={x:Null}}"
+                    SelectionMode="None">
+                    <ListView.Resources>
+                        <SolidColorBrush x:Key="ListViewItemBackgroundPointerOver" Color="Transparent" />
+                        <SolidColorBrush x:Key="ListViewItemBackgroundPressed" Color="Transparent" />
+                    </ListView.Resources>
+                </ListView>
+                <TextBlock
+                    Grid.Row="1"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Style="{StaticResource IrisCalloutTextStyle}"
+                    Text="No quedan bloques pendientes"
+                    Visibility="{x:Bind ViewModel.HasNoPendingBlocks, Mode=OneWay, FallbackValue=Collapsed}" />
+            </Grid>
+        </controls:IrisModal>
+
+        <!--  ¿Terminar el servicio?  -->
+        <controls:IrisModal
+            CloseCommand="{x:Bind ViewModel.CancelFinishCommand, Mode=OneWay}"
+            IsOpen="{x:Bind ViewModel.IsConfirmingFinish, Mode=OneWay, FallbackValue=False}"
+            PanelWidth="{StaticResource IrisConfirmModalWidth}">
+            <StackPanel Padding="{StaticResource IrisPaddingXl}" Spacing="{StaticResource IrisSpacingLg}">
+                <StackPanel Spacing="{StaticResource IrisSpacingXs}">
+                    <TextBlock Style="{StaticResource IrisTitleTextStyle}" Text="¿Terminar el servicio?" />
+                    <TextBlock Style="{StaticResource IrisCalloutTextStyle}" Text="Se guardarán los tiempos de los bloques." />
+                </StackPanel>
+                <StackPanel Spacing="{StaticResource IrisSpacingSm}">
+                    <Button
+                        Command="{x:Bind ViewModel.FinishServiceCommand, Mode=OneWay}"
+                        Content="Terminar"
+                        Style="{StaticResource IrisPrimaryButtonStyle}" />
+                    <Button
+                        Command="{x:Bind ViewModel.CancelFinishCommand, Mode=OneWay}"
+                        Content="Cancelar"
+                        Style="{StaticResource IrisGlassButtonStyle}" />
+                </StackPanel>
+            </StackPanel>
+        </controls:IrisModal>
+
+        <!--  Hoy hiciste cambios en los bloques  -->
+        <controls:IrisModal IsOpen="{x:Bind ViewModel.IsAskingTemplateUpdate, Mode=OneWay, FallbackValue=False}" PanelWidth="{StaticResource IrisConfirmModalWidth}">
+            <StackPanel Padding="{StaticResource IrisPaddingXl}" Spacing="{StaticResource IrisSpacingLg}">
+                <StackPanel Spacing="{StaticResource IrisSpacingXs}">
+                    <TextBlock Style="{StaticResource IrisTitleTextStyle}" Text="Hoy hiciste cambios en los bloques" />
+                    <TextBlock Style="{StaticResource IrisCalloutTextStyle}" Text="{x:Bind ViewModel.TemplateChangesMessage, Mode=OneWay, FallbackValue=''}" />
+                </StackPanel>
+                <StackPanel Spacing="{StaticResource IrisSpacingSm}">
+                    <Button
+                        Command="{x:Bind ViewModel.SaveToTemplateCommand, Mode=OneWay}"
+                        Content="Guardar en la plantilla"
+                        Style="{StaticResource IrisPrimaryButtonStyle}" />
+                    <Button
+                        Command="{x:Bind ViewModel.SaveOnlyTodayCommand, Mode=OneWay}"
+                        Content="Solo hoy"
+                        Style="{StaticResource IrisGlassButtonStyle}" />
+                </StackPanel>
+            </StackPanel>
+        </controls:IrisModal>
+
+        <!--  El servicio sigue en curso  -->
+        <controls:IrisModal
+            CloseCommand="{x:Bind ViewModel.CancelExitCommand, Mode=OneWay}"
+            IsOpen="{x:Bind ViewModel.IsConfirmingExit, Mode=OneWay, FallbackValue=False}"
+            PanelWidth="{StaticResource IrisConfirmModalWidth}">
+            <StackPanel Padding="{StaticResource IrisPaddingXl}" Spacing="{StaticResource IrisSpacingLg}">
+                <TextBlock Style="{StaticResource IrisTitleTextStyle}" Text="El servicio sigue en curso" />
+                <StackPanel Spacing="{StaticResource IrisSpacingSm}">
+                    <Button
+                        Command="{x:Bind ViewModel.FinishAndExitCommand, Mode=OneWay}"
+                        Content="Terminar y guardar"
+                        Style="{StaticResource IrisPrimaryButtonStyle}" />
+                    <Button
+                        Command="{x:Bind ViewModel.ExitWithoutSavingCommand, Mode=OneWay}"
+                        Content="Salir sin guardar"
+                        Style="{StaticResource IrisDangerButtonStyle}" />
+                    <Button
+                        Command="{x:Bind ViewModel.CancelExitCommand, Mode=OneWay}"
+                        Content="Cancelar"
+                        Style="{StaticResource IrisGlassButtonStyle}" />
+                </StackPanel>
+            </StackPanel>
+        </controls:IrisModal>
+    </Grid>
+</UserControl>
