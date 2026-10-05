@@ -9,16 +9,21 @@ public sealed class SessionScope
 {
     private readonly IServiceProvider _services;
     private HomeViewModel? _home;
+    private Guid? _churchId;
 
     public SessionScope(IServiceProvider services, SessionStore session)
     {
         _services = services;
         session.PropertyChanged += (_, _) =>
         {
-            if (session.Session is null)
+            // A different church (or signing out) starts a fresh Home.
+            var churchId = session.Session?.Church.Id;
+            if (churchId is null || churchId != _churchId)
             {
                 _home = null;
             }
+
+            _churchId = churchId;
         };
     }
 

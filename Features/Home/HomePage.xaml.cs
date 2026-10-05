@@ -1,3 +1,4 @@
+using System;
 using System.ComponentModel;
 using Iris.Shell;
 using Microsoft.UI.Xaml;
@@ -16,7 +17,13 @@ public sealed partial class HomePage : Page
         LayoutTiles();
     }
 
+    private IDisposable? _watch;
+
     public HomeViewModel ViewModel { get; } = App.GetService<SessionScope>().Home;
+
+    public SyncIndicatorViewModel Sync { get; } = App.GetService<SyncIndicatorViewModel>();
+
+    public Visibility AnyVisible(bool first, bool second) => first || second ? Visibility.Visible : Visibility.Collapsed;
 
     public static string SelectedStatus(bool isSelected) => isSelected ? "Seleccionado" : string.Empty;
 
@@ -24,6 +31,15 @@ public sealed partial class HomePage : Page
     {
         base.OnNavigatedTo(e);
         ViewModel.AppearCommand.Execute(null);
+        ViewModel.Activate();
+        _watch = App.GetService<DataWatcher>().Watch(() => ViewModel.AppearCommand.Execute(null));
+    }
+
+    protected override void OnNavigatedFrom(NavigationEventArgs e)
+    {
+        base.OnNavigatedFrom(e);
+        ViewModel.Deactivate();
+        _watch?.Dispose();
     }
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)

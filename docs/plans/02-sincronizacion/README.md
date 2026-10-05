@@ -70,4 +70,11 @@ Repositorios Live ──lee──▶ LocalStore (SQLite)  ◀──aplica págin
 
 ## Desviaciones
 
-_(Completar al cerrar la fase.)_
+- `LocalStore` devuelve los DTO de transporte (no modelos de `Core/Models`) y los repositorios `Live…` los mapean con `Mapping`; así la copia local no depende de los modelos de pantalla. Ningún ViewModel ve DTO.
+- `Suspend()` solo detiene la **descarga** (pull) durante un servicio; el envío de la cola sigue activo, porque el registro de tiempos se guarda al terminar el servicio, con la consola aún abierta.
+- La copia local de Fake y la de Live son archivos distintos (`iris-fake.db` / `iris.db`) para no mezclar datos de prueba con datos reales.
+- Cerrar sesión por decisión del usuario borra siempre la copia local y la cola (con confirmación si hay cambios sin enviar); si la sesión **vence** (refresh rechazado) la copia y la cola se conservan para el siguiente inicio de sesión de la misma iglesia, y se borran solo si entra otra iglesia (`BindChurchAsync`).
+- Una escritura de la cola rechazada con un 4xx se descarta y avisa en el panel del indicador (no hay "toast"); para curar la copia optimista se vacía la tabla afectada y se reinicia el cursor en `0` (resincronización completa).
+- El diálogo Conexión (`Ctrl+Shift+F12`) vive en `MainWindow`, así que abre en cualquier pantalla (el plan lo pedía en la de acceso): hace falta para probar "Simular sin conexión" con la sesión abierta.
+- El indicador se oculta mientras hay un servicio en curso (las descargas están pausadas).
+- El aspecto del indicador, del panel y de la capa "Preparando tu iglesia…" no se pudo revisar visualmente en esta sesión.

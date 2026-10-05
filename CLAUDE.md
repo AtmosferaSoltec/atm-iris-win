@@ -65,4 +65,3 @@ Run from Visual Studio with **Iris (Package)**. The `bin/.../Iris.exe` of a norm
 - Glyph constants in `DesignSystem/IrisTheme.cs` are stored as literal private-use characters; edit them with the Edit tool using `\uXXXX` escapes.
 - `Package.appxmanifest` declares `systemai:systemAIModels` (on-device Windows AI) in addition to `runFullTrust`; those APIs need package identity and Copilot+ hardware.
 - `Nullable` is enabled project-wide. New manifest image assets must also be added as `<Content>` items in `Iris.csproj`.
-- Legacy scaffolding from before the spec (`Services/`, `ViewModels/`, `Views/` — old Login/Register/Shell with NavigationView) is unused and can be deleted.

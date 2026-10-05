@@ -79,4 +79,10 @@ la app no lo borre):
 
 ## Desviaciones
 
-_(Completar al cerrar la fase.)_
+- `DesignSystem/Controls/IrisTextField.xaml` llegó del commit `2a84efe` con marcadores de conflicto de un `git stash pop` sin resolver (la compilación base fallaba). Se restauró la versión limpia del commit `20d55c4`; el trabajo en proceso sigue guardado en `stash@{0}`.
+- Los enums de los DTO viajan como `string` y se interpretan con `Mapping` (valor desconocido → opción más segura, p. ej. rol `operator`), en lugar de un convertidor con miembro `Unknown`.
+- Los permisos desconocidos que mande el servidor se ignoran.
+- "Guardar y reiniciar" reinicia el proceso con `AppInstance.Restart` (reiniciar solo la composición no es simple porque las ventanas retienen ViewModels); si falla, pide reiniciar a mano.
+- Sin paquete MSIX (copia sin empaquetar) no existe `ApplicationData.Current`: los ajustes se guardan en `%LOCALAPPDATA%\Iris\settings.json` y las carpetas locales también salen de ahí.
+- `ChurchClock` vive en `Core/Timing` con el namespace `Iris.Core.Models`; si el sistema no resuelve `America/Lima` (sin ICU) usa un desfase fijo de UTC−5.
+- Antes de la fase 01 el modo Live conserva los `Mock*` para lo que aún no tiene implementación real; cada fase reemplaza uno.

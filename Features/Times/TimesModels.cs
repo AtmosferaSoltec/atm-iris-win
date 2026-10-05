@@ -55,6 +55,9 @@ public sealed record BlockDetailRow(BlockRecord Block, string Leader, double Sca
 
     public bool IsCounted => !IsSkipped;
 
+    /// <summary>The "•••" menu (adjust duration, change leader) needs <see cref="Iris.Core.Models.Permission.RecordsManage"/>.</summary>
+    public bool ShowsMenu => IsCounted && Owner.CanManage;
+
     public bool IsAdjusted => Block.Status == BlockStatus.Adjusted;
 
     public bool IsOver => Block.IsOver;

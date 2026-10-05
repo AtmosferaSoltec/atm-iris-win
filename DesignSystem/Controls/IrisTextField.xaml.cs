@@ -1,8 +1,10 @@
 using System;
+using System.Linq;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
 using Windows.System;
 
 namespace Iris.DesignSystem.Controls;
@@ -15,6 +17,9 @@ public enum TextFieldKind
     Email,
     Password,
     NewPassword,
+
+    /// <summary>One-time code: digits only, centered, large monospace with wide tracking.</summary>
+    Code,
 }
 
 public sealed partial class IrisTextField : UserControl
@@ -37,6 +42,7 @@ public sealed partial class IrisTextField : UserControl
     public IrisTextField()
     {
         InitializeComponent();
+        Input.BeforeTextChanging += OnCodeBeforeTextChanging;
         Refresh();
     }
 
@@ -83,10 +89,12 @@ public sealed partial class IrisTextField : UserControl
                 {
                     TextFieldKind.Email => InputScopeNameValue.EmailSmtpAddress,
                     TextFieldKind.Name => InputScopeNameValue.PersonalFullName,
+                    TextFieldKind.Code => InputScopeNameValue.Digits,
                     _ => InputScopeNameValue.Default,
                 }),
             },
         };
+        ApplyCodeStyle();
         Input.IsSpellCheckEnabled = Kind is TextFieldKind.Text;
         Input.IsTextPredictionEnabled = Kind is TextFieldKind.Text;
         SecretInput.PasswordRevealMode = _isRevealed ? PasswordRevealMode.Visible : PasswordRevealMode.Hidden;
@@ -110,6 +118,26 @@ public sealed partial class IrisTextField : UserControl
         AutomationProperties.SetHelpText(SecretInput, ErrorMessage ?? Hint ?? string.Empty);
 
         ApplyChrome();
+    }
+
+    private void ApplyCodeStyle()
+    {
+        if (Kind == TextFieldKind.Code)
+        {
+            Input.TextAlignment = TextAlignment.Center;
+            Input.FontFamily = (FontFamily)Application.Current.Resources["IrisMonoFontFamily"];
+            Input.FontSize = IrisTheme.Double("IrisCodeFontSize");
+            Input.CharacterSpacing = (int)Application.Current.Resources["IrisTrackingCode"];
+            Input.MaxLength = 6;
+        }
+        else
+        {
+            Input.ClearValue(TextBox.TextAlignmentProperty);
+            Input.ClearValue(Control.FontFamilyProperty);
+            Input.ClearValue(Control.FontSizeProperty);
+            Input.ClearValue(Control.CharacterSpacingProperty);
+            Input.ClearValue(TextBox.MaxLengthProperty);
+        }
     }
 
     private void ApplyChrome()
@@ -137,6 +165,28 @@ public sealed partial class IrisTextField : UserControl
         {
             SecretInput.Password = text;
         }
+    }
+
+    // One-time codes take digits only, six at most. A paste with spaces or dashes ("123 456") is cleaned up, not refused.
+    private void OnCodeBeforeTextChanging(TextBox sender, TextBoxBeforeTextChangingEventArgs args)
+    {
+        if (Kind != TextFieldKind.Code)
+        {
+            return;
+        }
+
+        var clean = new string(args.NewText.Where(char.IsDigit).Take(6).ToArray());
+        if (clean == args.NewText)
+        {
+            return;
+        }
+
+        args.Cancel = true;
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            sender.Text = clean;
+            sender.SelectionStart = clean.Length;
+        });
     }
 
     private void OnTextChanged(object sender, TextChangedEventArgs e) => Text = Input.Text;

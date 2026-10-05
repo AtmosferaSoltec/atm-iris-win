@@ -10,6 +10,9 @@ public static class Spanish
 {
     public static readonly CultureInfo Culture = CultureInfo.GetCultureInfo("es-ES");
 
+    /// <summary>Alphabetical order for names in Spanish (accents sort with their letter, case ignored).</summary>
+    public static readonly StringComparer Comparer = StringComparer.Create(Culture, ignoreCase: true);
+
     private static readonly string[] WeekdayNames = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
     private static readonly string[] WeekdayShort = ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"];
     private static readonly string[] MonthNames = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
@@ -87,11 +90,23 @@ public static class NameKey
 
         var decomposed = text.Trim().Normalize(NormalizationForm.FormD);
         var builder = new StringBuilder(decomposed.Length);
+        var lastWasSpace = false;
         foreach (var c in decomposed)
         {
-            if (CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark)
+            if (char.IsWhiteSpace(c))
+            {
+                // Inner runs of whitespace collapse to one space (api-contract §2).
+                if (!lastWasSpace)
+                {
+                    builder.Append(' ');
+                }
+
+                lastWasSpace = true;
+            }
+            else if (CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark)
             {
                 builder.Append(char.ToLowerInvariant(c));
+                lastWasSpace = false;
             }
         }
 

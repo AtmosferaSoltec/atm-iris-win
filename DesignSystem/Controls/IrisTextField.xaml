@@ -6,7 +6,6 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     IsTabStop="False">
     <UserControl.Resources>
-<<<<<<< Updated upstream
         <!--
             Bare templates for the inner TextBox/PasswordBox: no chrome (the container draws it) and the text
             centered vertically. The stock template pins the text to the top of its row, which no
@@ -44,40 +43,6 @@
                                         </VisualState.Setters>
                                     </VisualState>
                                 </VisualStateGroup>
-=======
-        <!--  Lightweight styling: the inner TextBox/PasswordBox draw no chrome; the container does.  -->
-        <SolidColorBrush x:Key="TextControlBackground" Color="Transparent" />
-        <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="Transparent" />
-        <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="Transparent" />
-        <SolidColorBrush x:Key="TextControlBackgroundDisabled" Color="Transparent" />
-        <SolidColorBrush x:Key="TextControlBorderBrush" Color="Transparent" />
-        <SolidColorBrush x:Key="TextControlBorderBrushPointerOver" Color="Transparent" />
-        <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="Transparent" />
-        <SolidColorBrush x:Key="TextControlBorderBrushDisabled" Color="Transparent" />
-        <StaticResource x:Key="TextControlForeground" ResourceKey="IrisTextPrimaryBrush" />
-        <StaticResource x:Key="TextControlForegroundPointerOver" ResourceKey="IrisTextPrimaryBrush" />
-        <StaticResource x:Key="TextControlForegroundFocused" ResourceKey="IrisTextPrimaryBrush" />
-        <StaticResource x:Key="TextControlPlaceholderForeground" ResourceKey="IrisTextTertiaryBrush" />
-        <StaticResource x:Key="TextControlPlaceholderForegroundPointerOver" ResourceKey="IrisTextTertiaryBrush" />
-        <StaticResource x:Key="TextControlPlaceholderForegroundFocused" ResourceKey="IrisTextTertiaryBrush" />
-        <StaticResource x:Key="TextControlButtonForeground" ResourceKey="IrisTextSecondaryBrush" />
-        <Thickness x:Key="TextControlBorderThemeThickness">0</Thickness>
-        <Thickness x:Key="TextControlBorderThemeThicknessFocused">0</Thickness>
-
-        <!--  Bare templates: the stock template sizes the content row from its own header/padding metrics, which leaves the text above center.  -->
-        <Style x:Key="IrisBareTextBoxStyle" TargetType="TextBox">
-            <Setter Property="Foreground" Value="{StaticResource IrisTextPrimaryBrush}" />
-            <Setter Property="VerticalAlignment" Value="Center" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="TextBox">
-                        <Grid VerticalAlignment="Center" ColumnSpacing="{StaticResource IrisSpacingXs}">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <VisualStateManager.VisualStateGroups>
->>>>>>> Stashed changes
                                 <VisualStateGroup x:Name="ButtonStates">
                                     <VisualState x:Name="ButtonVisible">
                                         <VisualState.Setters>
@@ -87,7 +52,6 @@
                                     <VisualState x:Name="ButtonCollapsed" />
                                 </VisualStateGroup>
                             </VisualStateManager.VisualStateGroups>
-<<<<<<< Updated upstream
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
@@ -104,22 +68,11 @@
                                 Padding="{TemplateBinding Padding}"
                                 VerticalScrollBarVisibility="{TemplateBinding ScrollViewer.VerticalScrollBarVisibility}"
                                 VerticalScrollMode="{TemplateBinding ScrollViewer.VerticalScrollMode}"
-=======
-                            <ScrollViewer
-                                x:Name="ContentElement"
-                                VerticalAlignment="Center"
-                                HorizontalScrollBarVisibility="Hidden"
-                                HorizontalScrollMode="Disabled"
-                                IsTabStop="False"
-                                VerticalScrollBarVisibility="Hidden"
-                                VerticalScrollMode="Disabled"
->>>>>>> Stashed changes
                                 ZoomMode="Disabled" />
                             <ContentControl
                                 x:Name="PlaceholderTextContentPresenter"
                                 VerticalAlignment="Center"
                                 Content="{TemplateBinding PlaceholderText}"
-<<<<<<< Updated upstream
                                 Foreground="{StaticResource IrisTextTertiaryBrush}"
                                 IsHitTestVisible="False"
                                 IsTabStop="False"
@@ -132,18 +85,6 @@
                                 Style="{StaticResource IrisSubtleIconButtonStyle}"
                                 Visibility="Collapsed">
                                 <FontIcon FontSize="{StaticResource IrisIconSmallFontSize}" Glyph="&#xE711;" Style="{StaticResource IrisIconStyle}" />
-=======
-                                Foreground="{TemplateBinding PlaceholderForeground}"
-                                IsHitTestVisible="False"
-                                IsTabStop="False" />
-                            <Button
-                                x:Name="DeleteButton"
-                                Grid.Column="1"
-                                IsTabStop="False"
-                                Style="{StaticResource IrisSubtleIconButtonStyle}"
-                                Visibility="Collapsed">
-                                <FontIcon Glyph="&#xE711;" Style="{StaticResource IrisIconStyle}" />
->>>>>>> Stashed changes
                             </Button>
                         </Grid>
                     </ControlTemplate>
@@ -153,7 +94,6 @@
 
         <Style x:Key="IrisBarePasswordBoxStyle" TargetType="PasswordBox">
             <Setter Property="Foreground" Value="{StaticResource IrisTextPrimaryBrush}" />
-<<<<<<< Updated upstream
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Padding" Value="0" />
@@ -187,19 +127,6 @@
                                 HorizontalScrollMode="Auto"
                                 IsTabStop="False"
                                 Padding="{TemplateBinding Padding}"
-=======
-            <Setter Property="VerticalAlignment" Value="Center" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="PasswordBox">
-                        <Grid VerticalAlignment="Center">
-                            <ScrollViewer
-                                x:Name="ContentElement"
-                                VerticalAlignment="Center"
-                                HorizontalScrollBarVisibility="Hidden"
-                                HorizontalScrollMode="Disabled"
-                                IsTabStop="False"
->>>>>>> Stashed changes
                                 VerticalScrollBarVisibility="Hidden"
                                 VerticalScrollMode="Disabled"
                                 ZoomMode="Disabled" />
@@ -209,12 +136,8 @@
                                 Content="{TemplateBinding PlaceholderText}"
                                 Foreground="{StaticResource IrisTextTertiaryBrush}"
                                 IsHitTestVisible="False"
-<<<<<<< Updated upstream
                                 IsTabStop="False"
                                 Padding="{TemplateBinding Padding}" />
-=======
-                                IsTabStop="False" />
->>>>>>> Stashed changes
                         </Grid>
                     </ControlTemplate>
                 </Setter.Value>
@@ -255,11 +178,6 @@
                     GotFocus="OnInputGotFocus"
                     KeyDown="OnInputKeyDown"
                     LostFocus="OnInputLostFocus"
-<<<<<<< Updated upstream
-=======
-                    PlaceholderForeground="{StaticResource IrisTextTertiaryBrush}"
-                    SelectionHighlightColor="{StaticResource IrisCoralBrush}"
->>>>>>> Stashed changes
                     Style="{StaticResource IrisBareTextBoxStyle}"
                     TextChanged="OnTextChanged" />
 
@@ -271,10 +189,6 @@
                     LostFocus="OnInputLostFocus"
                     PasswordChanged="OnPasswordChanged"
                     PasswordRevealMode="Hidden"
-<<<<<<< Updated upstream
-=======
-                    SelectionHighlightColor="{StaticResource IrisCoralBrush}"
->>>>>>> Stashed changes
                     Style="{StaticResource IrisBarePasswordBoxStyle}"
                     Visibility="Collapsed" />
 

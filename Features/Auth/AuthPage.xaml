@@ -119,6 +119,7 @@
                         <controls:IrisSegmentedControl Items="{x:Bind ViewModel.Modes}" SelectedIndex="{x:Bind ViewModel.ModeIndex, Mode=TwoWay}" />
 
                         <controls:IrisBanner Message="{x:Bind ViewModel.BannerMessage, Mode=OneWay}" />
+                        <controls:IrisBanner Kind="Success" Message="{x:Bind ViewModel.SuccessMessage, Mode=OneWay}" />
 
                         <StackPanel Spacing="{StaticResource IrisSpacingMd}">
                             <controls:IrisTextField
@@ -201,7 +202,7 @@
             VerticalAlignment="Top"
             Background="Transparent" />
 
-        <!--  Password recovery sheet  -->
+        <!--  Password recovery sheet: three steps  -->
         <controls:IrisModal
             CloseCommand="{x:Bind ViewModel.CloseRecoveryCommand}"
             IsOpen="{x:Bind ViewModel.IsRecoveryOpen, Mode=OneWay}"
@@ -218,26 +219,55 @@
                 </Button>
 
                 <StackPanel Spacing="{StaticResource IrisSpacingLg}">
+                    <!--  Paso N de 3: three capsules, the current one wider with the accent gradient  -->
+                    <StackPanel
+                        HorizontalAlignment="Left"
+                        AutomationProperties.Name="{x:Bind StepLabel(ViewModel.Recovery.StepNumber), Mode=OneWay}"
+                        Orientation="Horizontal"
+                        Spacing="{StaticResource IrisSpacingXxs}">
+                        <Border
+                            Width="{x:Bind StepWidth(ViewModel.Recovery.StepNumber, 1), Mode=OneWay}"
+                            Height="{StaticResource IrisStepHeight}"
+                            Background="{x:Bind StepBrush(ViewModel.Recovery.StepNumber, 1), Mode=OneWay}"
+                            CornerRadius="{StaticResource IrisRadiusCapsuleStep}" />
+                        <Border
+                            Width="{x:Bind StepWidth(ViewModel.Recovery.StepNumber, 2), Mode=OneWay}"
+                            Height="{StaticResource IrisStepHeight}"
+                            Background="{x:Bind StepBrush(ViewModel.Recovery.StepNumber, 2), Mode=OneWay}"
+                            CornerRadius="{StaticResource IrisRadiusCapsuleStep}" />
+                        <Border
+                            Width="{x:Bind StepWidth(ViewModel.Recovery.StepNumber, 3), Mode=OneWay}"
+                            Height="{StaticResource IrisStepHeight}"
+                            Background="{x:Bind StepBrush(ViewModel.Recovery.StepNumber, 3), Mode=OneWay}"
+                            CornerRadius="{StaticResource IrisRadiusCapsuleStep}" />
+                    </StackPanel>
+
                     <Grid
                         Width="{StaticResource IrisEmblemSize}"
                         Height="{StaticResource IrisEmblemSize}"
                         HorizontalAlignment="Left">
                         <Ellipse
-                            Fill="{StaticResource IrisSurfaceRaisedBrush}"
+                            Fill="{StaticResource IrisAccentGradientBrush}"
                             Stroke="{StaticResource IrisStrokeBrush}"
                             StrokeThickness="1" />
                         <FontIcon
                             FontSize="{StaticResource IrisIconLargeFontSize}"
-                            Foreground="{StaticResource IrisAccentGradientBrush}"
+                            Foreground="{StaticResource IrisTextInverseBrush}"
                             Glyph="&#xE8D7;"
                             Style="{StaticResource IrisIconStyle}"
-                            Visibility="{x:Bind ViewModel.Recovery.IsEditing, Mode=OneWay, FallbackValue=Visible}" />
+                            Visibility="{x:Bind ViewModel.Recovery.IsEmailStep, Mode=OneWay, FallbackValue=Visible}" />
                         <FontIcon
                             FontSize="{StaticResource IrisIconLargeFontSize}"
-                            Foreground="{StaticResource IrisAccentGradientBrush}"
+                            Foreground="{StaticResource IrisTextInverseBrush}"
                             Glyph="&#xE8C3;"
                             Style="{StaticResource IrisIconStyle}"
-                            Visibility="{x:Bind ViewModel.Recovery.IsSent, Mode=OneWay, FallbackValue=Collapsed}" />
+                            Visibility="{x:Bind ViewModel.Recovery.IsCodeStep, Mode=OneWay, FallbackValue=Collapsed}" />
+                        <FontIcon
+                            FontSize="{StaticResource IrisIconLargeFontSize}"
+                            Foreground="{StaticResource IrisTextInverseBrush}"
+                            Glyph="&#xEA18;"
+                            Style="{StaticResource IrisIconStyle}"
+                            Visibility="{x:Bind ViewModel.Recovery.IsPasswordStep, Mode=OneWay, FallbackValue=Collapsed}" />
                     </Grid>
 
                     <StackPanel Spacing="{StaticResource IrisSpacingXs}">
@@ -245,13 +275,13 @@
                             AutomationProperties.HeadingLevel="Level2"
                             Style="{StaticResource IrisTitleTextStyle}"
                             Text="{x:Bind ViewModel.Recovery.Title, Mode=OneWay}" />
-                        <TextBlock Style="{StaticResource IrisCalloutTextStyle}">
-                            <Run Text="{x:Bind ViewModel.Recovery.Message, Mode=OneWay}" /><Bold Foreground="{StaticResource IrisTextPrimaryBrush}"><Run Text="{x:Bind ViewModel.Recovery.SentEmail, Mode=OneWay}" /></Bold><Run Text="{x:Bind ViewModel.Recovery.SentSuffix, Mode=OneWay}" />
-                        </TextBlock>
+                        <TextBlock Style="{StaticResource IrisCalloutTextStyle}" Text="{x:Bind ViewModel.Recovery.Description, Mode=OneWay}" />
                     </StackPanel>
 
-                    <StackPanel Spacing="{StaticResource IrisSpacingLg}" Visibility="{x:Bind ViewModel.Recovery.IsEditing, Mode=OneWay, FallbackValue=Collapsed}">
+                    <StackPanel Spacing="{StaticResource IrisSpacingLg}">
                         <controls:IrisBanner Message="{x:Bind ViewModel.Recovery.Error, Mode=OneWay}" />
+
+                        <!--  Step 1  -->
                         <controls:IrisTextField
                             x:Name="RecoveryEmailField"
                             ErrorMessage="{x:Bind ViewModel.Recovery.EmailError, Mode=OneWay}"
@@ -260,29 +290,71 @@
                             Label="Correo de la iglesia"
                             Placeholder="nombre@tuiglesia.org"
                             Submitted="OnRecoverySubmitted"
-                            Text="{x:Bind ViewModel.Recovery.Email, Mode=TwoWay}" />
+                            Text="{x:Bind ViewModel.Recovery.Email, Mode=TwoWay}"
+                            Visibility="{x:Bind ViewModel.Recovery.IsEmailStep, Mode=OneWay, FallbackValue=Visible}" />
+
+                        <!--  Step 2  -->
+                        <StackPanel Spacing="{StaticResource IrisSpacingSm}" Visibility="{x:Bind ViewModel.Recovery.IsCodeStep, Mode=OneWay, FallbackValue=Collapsed}">
+                            <controls:IrisTextField
+                                x:Name="RecoveryCodeField"
+                                ErrorMessage="{x:Bind ViewModel.Recovery.CodeError, Mode=OneWay}"
+                                Kind="Code"
+                                Label="Código de 6 dígitos"
+                                Placeholder="······"
+                                Submitted="OnRecoverySubmitted"
+                                Text="{x:Bind ViewModel.Recovery.Code, Mode=TwoWay}" />
+                            <TextBlock
+                                Style="{StaticResource IrisCaptionTextStyle}"
+                                Text="{x:Bind ViewModel.Recovery.ResendText, Mode=OneWay}"
+                                Visibility="{x:Bind IsWaitingToResend(ViewModel.Recovery.CanResend), Mode=OneWay}" />
+                            <Button
+                                HorizontalAlignment="Left"
+                                Command="{x:Bind ViewModel.Recovery.ResendCommand, Mode=OneWay}"
+                                Content="Reenviar código"
+                                Style="{StaticResource IrisLinkButtonStyle}"
+                                Visibility="{x:Bind ViewModel.Recovery.CanResend, Mode=OneWay, FallbackValue=Collapsed}" />
+                        </StackPanel>
+
+                        <!--  Step 3  -->
+                        <StackPanel Spacing="{StaticResource IrisSpacingMd}" Visibility="{x:Bind ViewModel.Recovery.IsPasswordStep, Mode=OneWay, FallbackValue=Collapsed}">
+                            <controls:IrisTextField
+                                x:Name="RecoveryPasswordField"
+                                ErrorMessage="{x:Bind ViewModel.Recovery.PasswordError, Mode=OneWay}"
+                                Glyph="&#xE72E;"
+                                Hint="Mínimo 8 caracteres."
+                                Kind="NewPassword"
+                                Label="Contraseña nueva"
+                                Placeholder="Crea una contraseña"
+                                Submitted="OnRecoveryPasswordSubmitted"
+                                Text="{x:Bind ViewModel.Recovery.NewPassword, Mode=TwoWay}" />
+                            <controls:IrisTextField
+                                x:Name="RecoveryConfirmField"
+                                ErrorMessage="{x:Bind ViewModel.Recovery.ConfirmError, Mode=OneWay}"
+                                Glyph="&#xE72E;"
+                                Kind="NewPassword"
+                                Label="Confirma la contraseña"
+                                Placeholder="Repite la contraseña"
+                                Submitted="OnRecoverySubmitted"
+                                Text="{x:Bind ViewModel.Recovery.ConfirmPassword, Mode=TwoWay}" />
+                        </StackPanel>
+
                         <Button
-                            AutomationProperties.Name="Enviar enlace"
-                            Command="{x:Bind ViewModel.Recovery.SendCommand, Mode=OneWay}"
+                            AutomationProperties.Name="{x:Bind ViewModel.Recovery.PrimaryText, Mode=OneWay}"
+                            Command="{x:Bind ViewModel.Recovery.PrimaryCommand, Mode=OneWay}"
                             Style="{StaticResource IrisPrimaryButtonStyle}">
                             <Grid>
-                                <TextBlock Text="Enviar enlace" Visibility="{x:Bind ViewModel.Recovery.IsNotSending, Mode=OneWay, FallbackValue=Visible}" />
+                                <TextBlock Text="{x:Bind ViewModel.Recovery.PrimaryText, Mode=OneWay}" Visibility="{x:Bind ViewModel.Recovery.IsIdle, Mode=OneWay, FallbackValue=Visible}" />
                                 <ProgressRing
                                     Width="20"
                                     Height="20"
                                     Foreground="{StaticResource IrisTextInverseBrush}"
-                                    IsActive="{x:Bind ViewModel.Recovery.IsSending, Mode=OneWay, FallbackValue=False}" />
+                                    IsActive="{x:Bind ViewModel.Recovery.IsBusy, Mode=OneWay, FallbackValue=False}" />
                             </Grid>
                         </Button>
                     </StackPanel>
-
-                    <Button
-                        Command="{x:Bind ViewModel.CloseRecoveryCommand}"
-                        Content="Volver a iniciar sesión"
-                        Style="{StaticResource IrisGlassButtonStyle}"
-                        Visibility="{x:Bind ViewModel.Recovery.IsSent, Mode=OneWay, FallbackValue=Collapsed}" />
                 </StackPanel>
             </Grid>
         </controls:IrisModal>
+
     </Grid>
 </Page>

@@ -33,4 +33,9 @@ Fase 01. Independiente de la sincronización.
 
 ## Desviaciones
 
-_(Completar al cerrar la fase.)_
+- Los ids de libro pasan a ser los códigos USFM del contrato ("GEN", "JHN", "PSA"…) en modo Fake y Live; los ids cortos de la maqueta ("gn", "jn") quedan solo en modo Mock. Nada en la interfaz depende de ellos.
+- La descompresión gzip se activa en el `SocketsHttpHandler` del transporte real (`AutomaticDecompression = GZip | Deflate`), no en un `HttpClientHandler`. La API falsa responde sin gzip.
+- `IBibleRepository` suma `Status`, `StatusChanged` y `RetryAsync()` para que el selector muestre "Descargando la Biblia… N %", el mensaje sin conexión y "Reintentar". El porcentaje usa `sizeBytes` de `GET /bible/translations` (única fuente fiable cuando la respuesta viaja comprimida) y nunca pasa de 99 % hasta terminar.
+- La Biblia se descarga sola tras cada ronda de sincronización terminada (`BibleSyncTask`) si el módulo Biblia está encendido; las comprobaciones de actualización con `If-None-Match` ocurren como máximo cada 24 h (se guarda la última en `rvr1909.meta.json`).
+- Los archivos de la Biblia y de la caché de multimedia del modo Fake viven en una subcarpeta `fake/` para no mezclarse con los reales.
+- La API falsa solo trae texto real de Salmos 23, Juan 1 y 3 y Génesis 1; el resto es "Texto de ejemplo de {Libro} {cap}:{v}.". La Biblia completa llega con la API verdadera.

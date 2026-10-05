@@ -30,4 +30,8 @@ Fases 02 y 03.
 
 ## Desviaciones
 
-_(Completar al cerrar la fase.)_
+- Las pantallas se actualizan en silencio con un `DataWatcher` que escucha `ISyncService.Synced` (llegó información nueva de la sincronización) en lugar de `LocalStore.Changed`; las escrituras propias ya se ven al instante por la escritura optimista. `LocalStore.Changed` sigue existiendo para quien lo necesite.
+- Tras encolar una escritura el repositorio pide una ronda de sincronización (`SyncReason.Write`): envía la cola y, si no hay un servicio en curso, también descarga novedades.
+- El contador de bloques de la pantalla Personas sigue calculándose con los registros de tiempo (como en la maqueta) en vez de usar `blockCount` del servidor; el DTO conserva el valor del servidor. Hasta la fase 08 el repositorio de tiempos es el de la maqueta, así que ese contador sale de datos de ejemplo.
+- Un `DELETE` encolado que recibe 404 se da por cumplido (ya estaba borrado) y no se avisa; cualquier otro 4xx se descarta con aviso.
+- Una escritura de módulos rechazada no tiene tabla que vaciar: fuerza una resincronización completa desde el cursor `0`.

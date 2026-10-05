@@ -58,4 +58,8 @@ Reemplaza el flujo de enlace (`PasswordRecoveryViewModel` y su `IrisModal`) por 
 
 ## Desviaciones
 
-_(Completar al cerrar la fase.)_
+- El contrato no define la "regla de gracia y reuso" del refresh: la API falsa acepta el token anterior durante 30 s tras rotar (devuelve el par vigente) y trata cualquier token más viejo como robado (cierra la sesión con `INVALID_REFRESH_TOKEN`). La API real puede diferir.
+- Se agregó `AuthError.SessionExpired`, el evento `SessionExpired`/`SessionUpdated` y `RestoreAsync()` (lectura local, sin red) a `IAuthService`.
+- Al abrir con sesión guardada la app entra de inmediato; el refresco y `GET /auth/me` ocurren en segundo plano y no cambian de pantalla (`SessionStore.IsSignedIn` solo notifica al entrar o salir).
+- Los glifos del emblema de la recuperación (llave, sobre abierto, escudo `U+EA18`) y la apariencia de las tres cápsulas no se pudieron revisar visualmente en esta sesión; el campo del código es un nuevo `TextFieldKind.Code` de `IrisTextField` (con tokens `IrisMonoFontFamily`, `IrisCodeFontSize`, `IrisTrackingCode`, `IrisStep*`).
+- Las pruebas de autenticación (`Tests/AuthFlowTests.cs`) se escribieron aquí como verificación rápida de la lógica en vez de esperar a la fase 10; la fase 10 las amplía.

@@ -6,7 +6,7 @@ using Iris.Core.Formatting;
 namespace Iris.Core.Models;
 
 /// <summary>Someone who leads service blocks (welcome, worship, sermon…).</summary>
-public sealed record Person(Guid Id, string Name)
+public sealed record Person(Guid Id, string Name, int BlockCount = 0)
 {
     /// <summary>"Daniel Ruiz" → "DR"; one word → its first letter.</summary>
     public string Initials => PersonInitials.From(Name);
@@ -67,7 +67,7 @@ public sealed record BlockRecord(Guid Id, string Name, int PlannedSeconds, int A
     public bool IsOver => Overtime > 0;
 }
 
-public sealed record ServiceRecord(Guid Id, DateTime Date, Guid ServiceTypeId, IReadOnlyList<BlockRecord> Blocks)
+public sealed record ServiceRecord(Guid Id, DateTime Date, Guid ServiceTypeId, IReadOnlyList<BlockRecord> Blocks, string ServiceTypeName = "")
 {
     public int PlannedSeconds => Blocks.Where(b => b.IsCounted).Sum(b => b.PlannedSeconds);
 

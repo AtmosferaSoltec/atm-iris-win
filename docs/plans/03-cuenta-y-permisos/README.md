@@ -42,4 +42,9 @@ Usa `session.Can(...)`. Sin el permiso la acción **no aparece** (salvo donde se
 
 ## Desviaciones
 
-_(Completar al cerrar la fase.)_
+- Personas: los tres roles tienen `people.manage`, así que no hay vistas distintas; los comandos de agregar, renombrar y eliminar usan `CanExecute` con ese permiso (quedarían deshabilitados, no ocultos, si algún rol futuro no lo tuviera).
+- Cambiar de iglesia o cerrar sesión en todos los dispositivos sin conexión muestra un mensaje ("No pudimos conectarnos…") en vez de cerrar solo lo local, porque ambas acciones necesitan al servidor. "Cerrar sesión" sí funciona sin conexión.
+- "Cerrar sesión en todos los dispositivos" también pide confirmar si hay cambios sin enviar (además del diálogo propio del plan).
+- El editor de servicios de solo lectura deshabilita el formulario completo (queda atenuado) y cambia "Cancelar" por "Cerrar"; no hay un modo de lectura con diseño aparte.
+- Con permiso `records.write` ausente (ningún rol actual) la consola no guarda los tiempos y avisa "No tienes permiso para guardar los tiempos.".
+- Los glifos del menú de cuenta y su aspecto no se pudieron revisar visualmente en esta sesión.

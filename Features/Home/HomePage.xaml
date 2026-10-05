@@ -218,7 +218,7 @@
                             <ItemsRepeater
                                 Margin="0,8,0,8"
                                 ItemTemplate="{StaticResource TypePillTemplate}"
-                                ItemsSource="{x:Bind ViewModel.TypeOptions}"
+                                ItemsSource="{x:Bind ViewModel.TypeOptions, Mode=OneWay}"
                                 Visibility="{x:Bind ViewModel.HasServiceTypes, Mode=OneWay}">
                                 <ItemsRepeater.Layout>
                                     <StackLayout Orientation="Horizontal" Spacing="{StaticResource IrisSpacingXs}" />
@@ -418,5 +418,53 @@
             Width="36"
             Height="36"
             IsActive="{x:Bind ViewModel.IsLoading, Mode=OneWay}" />
+
+        <!--  First download of the church: "Preparando tu iglesia…" or, without a connection, a retry  -->
+        <Grid
+            Grid.Row="1"
+            Background="{StaticResource IrisCanvasBrush}"
+            Visibility="{x:Bind AnyVisible(Sync.ShowsPreparing, Sync.NeedsConnection), Mode=OneWay}">
+            <StackPanel
+                MaxWidth="{StaticResource IrisReadableWidth}"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Spacing="{StaticResource IrisSpacingMd}"
+                Visibility="{x:Bind Sync.ShowsPreparing, Mode=OneWay}">
+                <ProgressRing
+                    Width="36"
+                    Height="36"
+                    IsActive="{x:Bind Sync.ShowsPreparing, Mode=OneWay}" />
+                <TextBlock
+                    HorizontalAlignment="Center"
+                    Style="{StaticResource IrisTitleTextStyle}"
+                    Text="Preparando tu iglesia…" />
+                <TextBlock
+                    HorizontalAlignment="Center"
+                    Style="{StaticResource IrisCalloutTextStyle}"
+                    Text="{x:Bind Sync.PreparingDetail, Mode=OneWay}" />
+            </StackPanel>
+            <StackPanel
+                MaxWidth="{StaticResource IrisReadableWidth}"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Spacing="{StaticResource IrisSpacingMd}"
+                Visibility="{x:Bind Sync.NeedsConnection, Mode=OneWay}">
+                <FontIcon
+                    FontSize="{StaticResource IrisIconLargeFontSize}"
+                    Foreground="{StaticResource IrisWarningBrush}"
+                    Glyph="&#xE895;"
+                    Style="{StaticResource IrisIconStyle}" />
+                <TextBlock
+                    HorizontalAlignment="Center"
+                    Style="{StaticResource IrisCalloutTextStyle}"
+                    Text="{x:Bind Sync.NeedsConnectionText, Mode=OneWay}"
+                    TextAlignment="Center" />
+                <Button
+                    HorizontalAlignment="Center"
+                    Command="{x:Bind Sync.SyncNowCommand}"
+                    Content="Reintentar"
+                    Style="{StaticResource IrisPrimaryButtonStyle}" />
+            </StackPanel>
+        </Grid>
     </Grid>
 </Page>

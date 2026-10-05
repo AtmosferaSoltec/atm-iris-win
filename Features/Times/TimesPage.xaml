@@ -162,7 +162,7 @@
                     AutomationProperties.Name="Opciones del bloque"
                     Style="{StaticResource IrisSubtleIconButtonStyle}"
                     ToolTipService.ToolTip="Opciones del bloque"
-                    Visibility="{x:Bind IsCounted}">
+                    Visibility="{x:Bind ShowsMenu}">
                     <FontIcon Glyph="&#xE712;" Style="{StaticResource IrisIconStyle}" />
                     <Button.Flyout>
                         <MenuFlyout Placement="BottomEdgeAlignedRight">
@@ -522,7 +522,8 @@
                                     Command="{x:Bind ViewModel.RequestDeleteSelectedCommand}"
                                     Content="Eliminar registro"
                                     Foreground="{StaticResource IrisDangerBrush}"
-                                    Style="{StaticResource IrisLinkButtonStyle}" />
+                                    Style="{StaticResource IrisLinkButtonStyle}"
+                                    Visibility="{x:Bind ViewModel.CanManage}" />
                             </StackPanel>
                         </ScrollViewer>
                     </Grid>

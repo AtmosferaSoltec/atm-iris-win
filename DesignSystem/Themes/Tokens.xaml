@@ -104,6 +104,7 @@
     <FontFamily x:Key="IrisSansFontFamily">Segoe UI Variable Text, Segoe UI</FontFamily>
     <FontFamily x:Key="IrisSansDisplayFontFamily">Segoe UI Variable Display, Segoe UI</FontFamily>
     <FontFamily x:Key="IrisIconFontFamily">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
+    <FontFamily x:Key="IrisMonoFontFamily">Cascadia Mono, Consolas</FontFamily>
 
     <x:Double x:Key="IrisDisplayFontSize">56</x:Double>
     <x:Double x:Key="IrisHeadlineFontSize">34</x:Double>
@@ -120,11 +121,13 @@
     <x:Double x:Key="IrisIconSmallFontSize">14</x:Double>
     <x:Double x:Key="IrisIconLargeFontSize">28</x:Double>
     <x:Double x:Key="IrisNumberCellFontSize">20</x:Double>
+    <x:Double x:Key="IrisCodeFontSize">28</x:Double>
 
     <!--  Tracking (IrisTracking) in 1/1000 em: tight -0.5pt, overline 2.0pt, caps 1.2pt  -->
     <x:Int32 x:Key="IrisTrackingTight">-12</x:Int32>
     <x:Int32 x:Key="IrisTrackingOverline">180</x:Int32>
     <x:Int32 x:Key="IrisTrackingCaps">110</x:Int32>
+    <x:Int32 x:Key="IrisTrackingCode">400</x:Int32>
 
     <!--  ===== Spacing (IrisSpacing) =====  -->
     <x:Double x:Key="IrisSpacingXxs">4</x:Double>
@@ -174,6 +177,7 @@
     <CornerRadius x:Key="IrisRadiusCapsuleChip">12</CornerRadius>
     <CornerRadius x:Key="IrisRadiusCapsuleTag">10</CornerRadius>
     <CornerRadius x:Key="IrisRadiusSelectionBar">2</CornerRadius>
+    <CornerRadius x:Key="IrisRadiusCapsuleStep">3</CornerRadius>
 
     <!--  ===== Sizes (IrisSize) =====  -->
     <x:Double x:Key="IrisControlHeight">44</x:Double>
@@ -189,6 +193,9 @@
     <x:Double x:Key="IrisCheckmarkSize">24</x:Double>
     <x:Double x:Key="IrisLiveDotSize">7</x:Double>
     <x:Double x:Key="IrisEmblemSize">64</x:Double>
+    <x:Double x:Key="IrisStepHeight">6</x:Double>
+    <x:Double x:Key="IrisStepWidth">24</x:Double>
+    <x:Double x:Key="IrisStepActiveWidth">48</x:Double>
     <x:Double x:Key="IrisToastHeight">52</x:Double>
     <x:Double x:Key="IrisMiniTvMaxWidth">440</x:Double>
     <x:Double x:Key="IrisMediaStageMaxWidth">640</x:Double>
@@ -196,6 +203,8 @@
     <x:Double x:Key="IrisAddButtonWidth">260</x:Double>
     <x:Double x:Key="IrisSlideCardMinWidth">220</x:Double>
     <x:Double x:Key="IrisLibraryTileMinWidth">200</x:Double>
+    <x:Int32 x:Key="IrisThumbnailDecodeWidth">480</x:Int32>
+    <x:Double x:Key="IrisDownloadBarWidth">120</x:Double>
     <x:Double x:Key="IrisBookCellMinWidth">150</x:Double>
     <x:Double x:Key="IrisNumberCellMinWidth">64</x:Double>
     <x:Double x:Key="IrisNumberCellHeight">56</x:Double>
@@ -203,6 +212,7 @@
     <x:Double x:Key="IrisSwatchHeight">52</x:Double>
     <x:Double x:Key="IrisSwatchCellWidth">100</x:Double>
     <x:Double x:Key="IrisFormModalWidth">620</x:Double>
+    <x:Double x:Key="IrisSyncFlyoutWidth">320</x:Double>
     <x:Double x:Key="IrisPageModalWidth">900</x:Double>
     <x:Double x:Key="IrisConfirmModalWidth">420</x:Double>
     <x:Double x:Key="IrisSelectionBarWidth">3</x:Double>

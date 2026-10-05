@@ -266,7 +266,7 @@ public sealed class BlockTimer
     public bool HasTemplateChanges => Changes.HasChanges;
 
     /// <summary>Saves only times: name, planned, actual, leader (id + name now) and status. Date = first block start.</summary>
-    public ServiceRecord Record(Guid serviceTypeId, DateTime fallbackDate, IReadOnlyDictionary<Guid, string> peopleNames) =>
+    public ServiceRecord Record(Guid serviceTypeId, DateTime fallbackDate, IReadOnlyDictionary<Guid, string> peopleNames, string serviceTypeName = "") =>
         new(Guid.NewGuid(), StartedAt ?? fallbackDate, serviceTypeId, _blocks.Select(b =>
         {
             var ran = b.StartedAt is not null && !b.IsSkipped;
@@ -279,7 +279,7 @@ public sealed class BlockTimer
                 personId,
                 personId is { } id && peopleNames.TryGetValue(id, out var name) ? name : null,
                 ran ? BlockStatus.Completed : BlockStatus.Skipped);
-        }).ToList());
+        }).ToList(), serviceTypeName);
 
     /// <summary>
     /// "Guardar en la plantilla": today's order, names and minutes without the skipped ones.

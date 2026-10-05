@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.Input;
 using Iris.Core.Models;
 using Iris.Core.Services;
 using Iris.Shell;
+using Microsoft.Extensions.Logging;
 
 namespace Iris.Features.Auth;
 
@@ -25,13 +26,26 @@ public sealed partial class AuthViewModel : ObservableObject
     private readonly IAuthService _auth;
     private readonly SessionStore _session;
     private CancellationTokenSource? _showcaseLoop;
+    private readonly ILogger<AuthViewModel> _log;
 
-    public AuthViewModel(IAuthService auth, IShowcaseContentProvider showcase, SessionStore session)
+    public AuthViewModel(IAuthService auth, IShowcaseContentProvider showcase, SessionStore session, ILogger<AuthViewModel> log)
     {
+        _log = log;
         _auth = auth;
         _session = session;
         ShowcaseItems = showcase.Items();
         Email = session.LastEmail;
+        if (session.TakeNotice() is { } notice)
+        {
+            if (notice.IsSuccess)
+            {
+                SuccessMessage = notice.Message;
+            }
+            else
+            {
+                BannerMessage = notice.Message;
+            }
+        }
     }
 
     /// <summary>Asks the view to focus a field (first invalid field after a failed submit).</summary>
@@ -87,6 +101,9 @@ public sealed partial class AuthViewModel : ObservableObject
     public partial string? BannerMessage { get; set; }
 
     [ObservableProperty]
+    public partial string? SuccessMessage { get; set; }
+
+    [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsIdle))]
     public partial bool IsSubmitting { get; set; }
 
@@ -112,7 +129,11 @@ public sealed partial class AuthViewModel : ObservableObject
 
     public bool IsRecoveryOpen => Recovery is not null;
 
-    partial void OnModeIndexChanged(int value) => ClearErrors();
+    partial void OnModeIndexChanged(int value)
+    {
+        ClearErrors();
+        SuccessMessage = null;
+    }
 
     partial void OnChurchNameChanged(string value) => ChurchNameError = BannerMessage = null;
 
@@ -156,11 +177,12 @@ public sealed partial class AuthViewModel : ObservableObject
 
         ClearErrors();
 
-        // Mockup phase: "Entrar" is free (no validation); restore it when the API is connected.
-        if (IsSignUp && !ValidateSignUp())
+        if (!(IsSignUp ? ValidateSignUp() : ValidateSignIn()))
         {
             return;
         }
+
+        SuccessMessage = null;
 
         IsSubmitting = true;
         try
@@ -173,10 +195,11 @@ public sealed partial class AuthViewModel : ObservableObject
         }
         catch (AuthException ex)
         {
-            BannerMessage = AuthValidator.Message(ex.Error);
+            ShowError(ex);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            _log.LogError(ex, "El acceso falló de forma inesperada");
             BannerMessage = AuthValidator.Message(AuthError.Unknown);
         }
         finally
@@ -186,10 +209,65 @@ public sealed partial class AuthViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void PresentPasswordRecovery() => Recovery = new PasswordRecoveryViewModel(_auth, Email);
+    private void PresentPasswordRecovery() => Recovery = new PasswordRecoveryViewModel(_auth, Email, OnRecoveryCompleted);
 
     [RelayCommand]
     private void CloseRecovery() => Recovery = null;
+
+    private bool ValidateSignIn()
+    {
+        EmailError = AuthValidator.Email(Email);
+        PasswordError = string.IsNullOrEmpty(Password) ? "Ingresa tu contraseña." : null;
+        if (EmailError is not null || PasswordError is not null)
+        {
+            FocusRequested?.Invoke(this, EmailError is not null ? AuthField.Email : AuthField.Password);
+            return false;
+        }
+
+        return true;
+    }
+
+    // Field errors from the API go under their field; anything else is shown as is in the banner.
+    private void ShowError(AuthException ex)
+    {
+        var placed = false;
+        foreach (var (field, message) in ex.FieldErrors)
+        {
+            switch (field)
+            {
+                case "churchName":
+                    ChurchNameError = message;
+                    break;
+                case "fullName":
+                    LeaderNameError = message;
+                    break;
+                case "email":
+                    EmailError = message;
+                    break;
+                case "password":
+                    PasswordError = message;
+                    break;
+                default:
+                    continue;
+            }
+
+            placed = true;
+        }
+
+        if (!placed)
+        {
+            BannerMessage = ex.HasServerMessage ? ex.Message : AuthValidator.Message(ex.Error);
+        }
+    }
+
+    private void OnRecoveryCompleted(string email)
+    {
+        Recovery = null;
+        ModeIndex = 0;
+        Email = email;
+        Password = string.Empty;
+        SuccessMessage = "Tu contraseña quedó actualizada. Inicia sesión con la nueva.";
+    }
 
     private bool ValidateSignUp()
     {

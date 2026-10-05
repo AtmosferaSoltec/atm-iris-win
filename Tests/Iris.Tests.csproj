@@ -8,11 +8,9 @@
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
 
-  <!-- Pure logic only: these sources have no WinUI dependency. -->
+  <!-- Everything under Core/ is free of WinUI/WinRT, so it is linked whole instead of referencing the app project. -->
   <ItemGroup>
-    <Compile Include="..\Core\Formatting\*.cs" Link="Core\Formatting\%(Filename)%(Extension)" />
-    <Compile Include="..\Core\Models\Church.cs" Link="Core\Models\%(Filename)%(Extension)" />
-    <Compile Include="..\Core\Timing\*.cs" Link="Core\Timing\%(Filename)%(Extension)" />
+    <Compile Include="..\Core\**\*.cs" Link="Core\%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>
 
   <ItemGroup>
@@ -20,6 +18,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.1" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
     <PackageReference Include="xunit" Version="2.9.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />

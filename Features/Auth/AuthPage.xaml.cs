@@ -3,6 +3,7 @@ using Iris.DesignSystem;
 using Iris.DesignSystem.Controls;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 
 namespace Iris.Features.Auth;
 
@@ -12,6 +13,7 @@ public sealed partial class AuthPage : Page
     {
         InitializeComponent();
         ViewModel.FocusRequested += OnFocusRequested;
+        ViewModel.PropertyChanged += OnViewModelPropertyChanged;
         Loaded += (_, _) =>
         {
             App.MainWindow.ConfigureTitleBar(DragStrip);
@@ -48,7 +50,34 @@ public sealed partial class AuthPage : Page
         }
     }
 
-    private void OnRecoverySubmitted(object? sender, EventArgs e) => ViewModel.Recovery?.SendCommand.Execute(null);
+    private void OnRecoverySubmitted(object? sender, EventArgs e) => ViewModel.Recovery?.PrimaryCommand.Execute(null);
+
+    private void OnRecoveryPasswordSubmitted(object? sender, EventArgs e) => RecoveryConfirmField.FocusInput();
+
+    // Step indicator: the current step is wider and carries the accent gradient.
+    public string StepLabel(int step) => $"Paso {step} de 3";
+
+    public double StepWidth(int current, int step) => IrisTheme.Double(current == step ? "IrisStepActiveWidth" : "IrisStepWidth");
+
+    public Brush StepBrush(int current, int step) => IrisTheme.Brush(current == step ? "IrisAccentGradientBrush" : current > step ? "IrisTextTertiaryBrush" : "IrisStrokeStrongBrush");
+
+    public Visibility IsWaitingToResend(bool canResend) => canResend ? Visibility.Collapsed : Visibility.Visible;
+
+    private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(AuthViewModel.Recovery) && ViewModel.Recovery is { } recovery)
+        {
+            recovery.FocusRequested += (_, _) => DispatcherQueue.TryEnqueue(() => FocusRecoveryStep(recovery));
+            DispatcherQueue.TryEnqueue(() => FocusRecoveryStep(recovery));
+        }
+    }
+
+    private void FocusRecoveryStep(PasswordRecoveryViewModel recovery) => (recovery.Step switch
+    {
+        RecoveryStep.Email => RecoveryEmailField,
+        RecoveryStep.Code => RecoveryCodeField,
+        _ => RecoveryPasswordField,
+    }).FocusInput();
 
     private void OnFocusRequested(object? sender, AuthField field) => (field switch
     {

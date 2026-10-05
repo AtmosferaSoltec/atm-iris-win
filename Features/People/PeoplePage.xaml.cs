@@ -1,4 +1,6 @@
 using System;
+using Iris.Core.Persistence;
+using Iris.Shell;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
 
@@ -19,7 +21,16 @@ public sealed partial class PeoplePage : Page
     {
         base.OnNavigatedTo(e);
         ViewModel.LoadCommand.Execute(null);
+        _watch = App.GetService<DataWatcher>().Watch(() => ViewModel.LoadCommand.Execute(null), StoreChangeKind.People, StoreChangeKind.ServiceRecords);
     }
+
+    protected override void OnNavigatedFrom(NavigationEventArgs e)
+    {
+        base.OnNavigatedFrom(e);
+        _watch?.Dispose();
+    }
+
+    private IDisposable? _watch;
 
     // Enter adds and keeps the focus in the field.
     private void OnNewNameSubmitted(object? sender, EventArgs e) => ViewModel.AddCommand.Execute(null);

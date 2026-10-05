@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Iris.Core.Models;
 
 namespace Iris.Core.Services.Mocks;
@@ -9,7 +10,17 @@ namespace Iris.Core.Services.Mocks;
 /// </summary>
 public static class SampleData
 {
-    public static readonly UserSession Session = new(Guid.Parse("6f1c2b8e-0d55-4a5e-9a6b-0c7f3f1d9a11"), "Iglesia Vida Nueva", "Daniel Ruiz", "pastor@vidanueva.org");
+    public static readonly ChurchIdentity Church = new(Guid.Parse("6f1c2b8e-0d55-4a5e-9a6b-0c7f3f1d9a11"), "Iglesia Vida Nueva", "America/Lima");
+
+    public static readonly UserSession Session = new(
+        Guid.Parse("6f1c2b8e-0d55-4a5e-9a6b-0c7f3f1d9a12"),
+        "pastor@vidanueva.org",
+        "Daniel Ruiz",
+        Church,
+        Role.Owner,
+        Enum.GetValues<Permission>().ToHashSet(),
+        [new ChurchSummary(Church.Id, Church.Name, Role.Owner)],
+        Guid.Parse("6f1c2b8e-0d55-4a5e-9a6b-0c7f3f1d9a13"));
 
     public static IReadOnlyList<ShowcaseItem> Showcase { get; } =
     [
@@ -19,15 +30,7 @@ public static class SampleData
         new("Venid a mí todos los que estáis trabajados y cargados, y yo os haré descansar.", "Mateo 11:28"),
     ];
 
-    public static IReadOnlyList<ProjectionBackground> Backgrounds { get; } =
-    [
-        new("aurora", "Aurora", ["#2A1658", "#4E2A8C", "#131E5C"], true),
-        new("brasa", "Brasa", ["#3A1E08", "#8C3A1E", "#3D1235"], false),
-        new("oceano", "Océano", ["#06283D", "#0E5E6F", "#0A1931"], true),
-        new("olivo", "Olivo", ["#0F2417", "#2F5233", "#111A12"], false),
-        new("alba", "Alba", ["#5B2A3C", "#C0694E", "#2B1A3A"], false),
-        new("medianoche", "Medianoche", ["#07070B", "#15151F", "#07070B"], false),
-    ];
+    public static IReadOnlyList<ProjectionBackground> Backgrounds => BuiltInBackgrounds.All;
 
     // ----- Hymns -----
 

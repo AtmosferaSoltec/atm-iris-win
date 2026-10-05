@@ -7,8 +7,10 @@ using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Iris.Core.Media;
 using Iris.Core.Models;
 using Iris.Core.Services;
+using Iris.Core.Sync;
 using Iris.Features.AddToService;
 using Iris.Features.Bible;
 using Iris.Shell;
@@ -45,6 +47,11 @@ public sealed partial class LiveConsoleViewModel : ObservableObject
     private readonly IPeopleRepository _people;
     private readonly ITimeRecordRepository _records;
     private readonly SignedInNavigator _navigator;
+    private readonly ChurchClock _clock;
+    private readonly ISyncService _sync;
+    private readonly SessionStore _session;
+    private readonly IMediaCache _mediaCache;
+    private readonly IUiDispatcher _ui;
 
     private CancellationTokenSource _lifetime = new();
     private CancellationTokenSource? _undoTimer;
@@ -62,8 +69,18 @@ public sealed partial class LiveConsoleViewModel : ObservableObject
         IServiceTypeRepository types,
         IPeopleRepository people,
         ITimeRecordRepository records,
-        SignedInNavigator navigator)
+        SignedInNavigator navigator,
+        ISyncService sync,
+        SessionStore session,
+        IMediaCache mediaCache,
+        IUiDispatcher ui,
+        ChurchClock clock)
     {
+        _clock = clock;
+        _sync = sync;
+        _session = session;
+        _mediaCache = mediaCache;
+        _ui = ui;
         _plans = plans;
         _backgrounds = backgrounds;
         _bible = bible;
@@ -119,10 +136,16 @@ public sealed partial class LiveConsoleViewModel : ObservableObject
     /// <summary>Sets up the console for the service type started from Home (null = preview service).</summary>
     public void Configure(ConsoleLaunch? launch)
     {
+        // The console works with the copy it had when the service began: no pulls until it closes.
+        _sync.Suspend();
+        _player.ProgressChanged -= OnPlayerProgress;
+        _player.Ended -= OnPlayerEnded;
+        _player.ProgressChanged += OnPlayerProgress;
+        _player.Ended += OnPlayerEnded;
         _launch = launch;
         Modules = launch?.Modules ?? ChurchModules.All;
         BlockTimer = launch is { ServiceType: { TracksTime: true } type } && Modules.TimeControl
-            ? new BlockTimerViewModel(type, launch.People, _types, _people, _records, _navigator, launch.StartedAt)
+            ? new BlockTimerViewModel(type, launch.People, _types, _people, _records, _navigator, launch.StartedAt, () => _clock.Now, _session.Can(Permission.ServiceTypesManage), _session.Can(Permission.RecordsWrite), _sync, _ui)
             : null;
         if (BlockTimer is { } timer)
         {
@@ -330,6 +353,11 @@ public sealed partial class LiveConsoleViewModel : ObservableObject
     /// <summary>Stops loops and blanks the TV when the console goes away.</summary>
     public void Deactivate()
     {
+        _player.ProgressChanged -= OnPlayerProgress;
+        _player.Ended -= OnPlayerEnded;
+        CloseAddSheet();
+        CloseBiblePicker();
+        _sync.Resume();
         _lifetime.Cancel();
         _undoTimer?.Cancel();
         BlockTimer?.Stop();
@@ -476,7 +504,10 @@ public sealed partial class LiveConsoleViewModel : ObservableObject
 
             playback.IsPlaying = true;
             _player.Resume();
-            RunPlaybackClock(playback);
+            if (!playback.IsReal)
+            {
+                RunPlaybackClock(playback);
+            }
         }
 
         Changed();
@@ -535,7 +566,10 @@ public sealed partial class LiveConsoleViewModel : ObservableObject
             {
                 current.IsPlaying = true;
                 _player.Resume();
-                RunPlaybackClock(current);
+                if (!current.IsReal)
+                {
+                    RunPlaybackClock(current);
+                }
             }
 
             return;
@@ -555,10 +589,55 @@ public sealed partial class LiveConsoleViewModel : ObservableObject
             VideoContent video => video.Duration.TotalSeconds,
             _ => 0,
         };
+        var content = item.Slides[0].Content;
+        var request = new PlaybackRequest(
+            item.Id,
+            item.Kind == ServiceItemKind.Video,
+            item.Title,
+            content switch { AudioContent audio => audio.LocalPath, VideoContent video => video.LocalPath, _ => null },
+            TimeSpan.FromSeconds(duration));
         var playback = new PlaybackViewModel(item, duration, _player) { IsPlaying = true };
         Playback = playback;
-        _player.Play(item.Id);
-        RunPlaybackClock(playback);
+
+        // A cached file plays for real and reports its own time; design data has none, so the console simulates the clock.
+        playback.IsReal = _player.Play(request);
+        if (!playback.IsReal)
+        {
+            RunPlaybackClock(playback);
+        }
+    }
+
+    // ----- Real player events (UI thread) -----
+
+    private void OnPlayerProgress(object? sender, PlaybackProgress progress)
+    {
+        if (Playback is not { IsReal: true } playback)
+        {
+            return;
+        }
+
+        var wasPlaying = playback.IsPlaying;
+        playback.SetFromPlayer(progress.Elapsed, progress.Duration, progress.IsPlaying);
+
+        // The system media controls (or a keyboard media key) can pause and resume too: keep the console in step.
+        if (wasPlaying != progress.IsPlaying)
+        {
+            if (playback.IsVideo && progress.IsPlaying)
+            {
+                Live = new LiveRef(playback.ItemId, 0);
+                IsScreenCleared = false;
+            }
+
+            Changed();
+        }
+    }
+
+    private void OnPlayerEnded(object? sender, EventArgs e)
+    {
+        if (Playback is { IsReal: true, IsLooping: false })
+        {
+            StopPlayback();
+        }
     }
 
     private void PauseVideoIfPlaying()
@@ -608,17 +687,23 @@ public sealed partial class LiveConsoleViewModel : ObservableObject
     [RelayCommand]
     private void PresentAddToService()
     {
-        var sheet = new AddToServiceViewModel(_library, AppendToService, ShowsMultimedia);
+        var sheet = new AddToServiceViewModel(_library, AppendToService, ShowsMultimedia, _mediaCache, _ui);
         AddSheet = sheet;
         _ = sheet.LoadAsync();
     }
 
     [RelayCommand]
-    private void CloseAddToService() => AddSheet = null;
+    private void CloseAddToService() => CloseAddSheet();
+
+    private void CloseAddSheet()
+    {
+        AddSheet?.Dispose();
+        AddSheet = null;
+    }
 
     private void AppendToService(IReadOnlyList<ServiceItem> items)
     {
-        AddSheet = null;
+        CloseAddSheet();
         if (items.Count == 0)
         {
             return;
@@ -807,19 +892,25 @@ public sealed partial class LiveConsoleViewModel : ObservableObject
     [RelayCommand]
     private void PresentBible()
     {
-        var picker = new BiblePickerViewModel(_bible, PresentScriptureAsync);
+        var picker = new BiblePickerViewModel(_bible, PresentScriptureAsync, _ui);
         BiblePicker = picker;
         _ = picker.LoadAsync();
     }
 
     [RelayCommand]
-    private void CloseBible() => BiblePicker = null;
+    private void CloseBible() => CloseBiblePicker();
+
+    private void CloseBiblePicker()
+    {
+        BiblePicker?.Dispose();
+        BiblePicker = null;
+    }
 
     /// <summary>Opens the whole chapter as a temporary item (not added to the service) and sends the verse live.</summary>
     private async Task PresentScriptureAsync(BibleBook book, int chapter, int verse)
     {
         var verses = await _bible.VersesAsync(book.Id, chapter);
-        BiblePicker = null;
+        CloseBiblePicker();
         ScriptureItem = _presentedScripture = ServiceItemFactory.FromScripture(book, chapter, verses, _bible.TranslationName);
         RebuildCards();
         var index = Math.Clamp(verse - 1, 0, Cards.Count - 1);

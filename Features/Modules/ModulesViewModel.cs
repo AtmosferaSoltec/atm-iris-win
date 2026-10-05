@@ -32,7 +32,7 @@ public sealed partial class ModuleRowViewModel(ModuleKind kind, string title, st
     public string TintKey { get; } = tintKey;
 
     /// <summary>Lyrics are always on.</summary>
-    public bool CanToggle => Kind != ModuleKind.Lyrics;
+    public bool CanToggle => Kind != ModuleKind.Lyrics && owner.CanManage;
 
     public bool IsTimeControl => Kind == ModuleKind.TimeControl;
 
@@ -67,9 +67,11 @@ public sealed partial class ModulesViewModel : ObservableObject
 {
     private readonly IModuleSettingsRepository _repository;
     private readonly SignedInNavigator _navigator;
+    private readonly SessionStore _session;
 
-    public ModulesViewModel(IModuleSettingsRepository repository, SignedInNavigator navigator)
+    public ModulesViewModel(IModuleSettingsRepository repository, SignedInNavigator navigator, SessionStore session)
     {
+        _session = session;
         _repository = repository;
         _navigator = navigator;
         Rows =
@@ -83,6 +85,11 @@ public sealed partial class ModulesViewModel : ObservableObject
     }
 
     public IReadOnlyList<ModuleRowViewModel> Rows { get; }
+
+    /// <summary>Only <see cref="Permission.ModulesManage"/> may switch modules (api-contract §3).</summary>
+    public bool CanManage => _session.Can(Permission.ModulesManage);
+
+    public string? ReadOnlyNote => CanManage ? null : "Solo un administrador puede cambiar los módulos.";
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsTimeControlOff))]

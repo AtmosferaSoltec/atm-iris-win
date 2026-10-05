@@ -135,4 +135,6 @@ public sealed class MockTimeRecordRepository(InMemoryChurchStore store) : ITimeR
     public Task SaveAsync(ServiceRecord record) => store.Run(() => InMemoryChurchStore.Upsert(store.Records, record, r => r.Id, atStart: true));
 
     public Task DeleteAsync(Guid id) => store.Run(() => store.Records.RemoveAll(r => r.Id == id));
+
+    public Task<bool> IsPendingAsync(Guid id) => Task.FromResult(false);
 }

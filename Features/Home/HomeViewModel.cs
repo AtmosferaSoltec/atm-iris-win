@@ -2,12 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Iris.Core.Formatting;
 using Iris.Core.Models;
 using Iris.Core.Services;
+using Iris.Core.Sync;
 using Iris.Shell;
 
 namespace Iris.Features.Home;
@@ -60,6 +62,8 @@ public sealed partial class HomeViewModel : ObservableObject
     private readonly ITimeRecordRepository _records;
     private readonly ILibraryRepository _library;
     private readonly IDisplayOutputService _display;
+    private readonly ISyncService _sync;
+    private CancellationTokenSource? _periodic;
     private readonly Func<DateTime> _now;
     private bool _hasLoaded;
 
@@ -72,6 +76,8 @@ public sealed partial class HomeViewModel : ObservableObject
         ITimeRecordRepository records,
         ILibraryRepository library,
         IDisplayOutputService display,
+        ISyncService sync,
+        ChurchClock clock,
         Func<DateTime>? now = null)
     {
         _session = session;
@@ -82,7 +88,8 @@ public sealed partial class HomeViewModel : ObservableObject
         _records = records;
         _library = library;
         _display = display;
-        _now = now ?? (() => DateTime.Now);
+        _sync = sync;
+        _now = now ?? (() => clock.Now);
     }
 
     [ObservableProperty]
@@ -104,7 +111,11 @@ public sealed partial class HomeViewModel : ObservableObject
     [ObservableProperty]
     public partial Guid? SelectedServiceTypeId { get; set; }
 
-    public ObservableCollection<ServiceTypeOptionViewModel> TypeOptions { get; } = [];
+    /// <summary>
+    /// Replaced (never mutated) on every rebuild: this view model outlives its page, and a collection that raises change events
+    /// would call into the native handlers of pages that were already torn down.
+    /// </summary>
+    public IReadOnlyList<ServiceTypeOptionViewModel> TypeOptions { get; private set; } = [];
 
     // ===== Greeting =====
 
@@ -117,7 +128,7 @@ public sealed partial class HomeViewModel : ObservableObject
         _ => "Buenas noches,",
     };
 
-    public string ChurchName => _session.Session?.ChurchName ?? string.Empty;
+    public string ChurchName => _session.Session?.Church.Name ?? string.Empty;
 
     public string DisplayStatusText => IsDisplayConnected ? "Todo listo: el TV está conectado." : "Conecta el TV antes de comenzar el servicio.";
 
@@ -206,6 +217,53 @@ public sealed partial class HomeViewModel : ObservableObject
         new("Multimedia", Modules.Multimedia),
         new("Control de tiempo", Modules.TimeControl),
     ];
+
+    // ===== Sync triggers (api-contract §12): back on Home and every 5 min while Home is visible =====
+
+    public void Activate()
+    {
+        _display.DisplayChanged -= OnDisplayChanged;
+        _display.DisplayChanged += OnDisplayChanged;
+        if (_hasLoaded)
+        {
+            _ = _sync.SyncNowAsync(SyncReason.Home);
+            _ = _session.RefreshSessionAsync();
+        }
+
+        _periodic?.Cancel();
+        var loop = _periodic = new CancellationTokenSource();
+        _ = RunPeriodicSyncAsync(loop.Token);
+    }
+
+    public void Deactivate()
+    {
+        _display.DisplayChanged -= OnDisplayChanged;
+        _periodic?.Cancel();
+        _periodic = null;
+    }
+
+    // The TV can be plugged in or pulled out while Home is open.
+    private void OnDisplayChanged(object? sender, EventArgs e)
+    {
+        IsDisplayConnected = _display.ConnectedDisplay() is not null;
+        OnPropertyChanged(nameof(IsDisplayConnected));
+        OnPropertyChanged(nameof(DisplayStatusText));
+    }
+
+    private async Task RunPeriodicSyncAsync(CancellationToken token)
+    {
+        try
+        {
+            while (!token.IsCancellationRequested)
+            {
+                await Task.Delay(TimeSpan.FromMinutes(5), token);
+                await _sync.SyncNowAsync(SyncReason.Timer);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
 
     // ===== Intents =====
 
@@ -299,11 +357,8 @@ public sealed partial class HomeViewModel : ObservableObject
 
     private void RebuildOptions()
     {
-        TypeOptions.Clear();
-        foreach (var type in ServiceTypes)
-        {
-            TypeOptions.Add(new ServiceTypeOptionViewModel(type, this) { IsSelected = type.Id == SelectedServiceTypeId });
-        }
+        TypeOptions = ServiceTypes.Select(type => new ServiceTypeOptionViewModel(type, this) { IsSelected = type.Id == SelectedServiceTypeId }).ToList();
+        OnPropertyChanged(nameof(TypeOptions));
     }
 
     private string PersonName(Guid? id) => id is { } value ? People.FirstOrDefault(p => p.Id == value)?.Name ?? string.Empty : string.Empty;

@@ -271,6 +271,11 @@
                     Spacing="2">
                     <TextBlock Style="{StaticResource IrisCalloutEmphasizedTextStyle}" Text="{x:Bind ViewModel.FinishedSummary, Mode=OneWay, FallbackValue=''}" />
                     <TextBlock
+                        Foreground="{StaticResource IrisWarningBrush}"
+                        Style="{StaticResource IrisCaptionTextStyle}"
+                        Text="Se enviará cuando haya conexión"
+                        Visibility="{x:Bind ViewModel.IsRecordPending, Mode=OneWay, FallbackValue=Collapsed}" />
+                    <TextBlock
                         Foreground="{StaticResource IrisDangerBrush}"
                         Style="{StaticResource IrisCaptionTextStyle}"
                         Text="{x:Bind ViewModel.RecordError, Mode=OneWay, FallbackValue=''}"

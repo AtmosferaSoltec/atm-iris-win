@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--  Conexión (development and integration): data mode, API address, test, fake API switches. Ctrl+Shift+F12.  -->
+<UserControl
+    x:Class="Iris.Features.Connection.ConnectionSheet"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:Iris.DesignSystem.Controls"
+    IsTabStop="False">
+
+    <controls:IrisModal
+        CloseCommand="{x:Bind ViewModel.CloseCommand}"
+        IsOpen="{x:Bind ViewModel.IsOpen, Mode=OneWay}"
+        PanelWidth="{StaticResource IrisFormModalWidth}">
+        <Grid Padding="{StaticResource IrisPaddingXl}">
+            <Button
+                HorizontalAlignment="Right"
+                VerticalAlignment="Top"
+                AutomationProperties.Name="Cerrar"
+                Command="{x:Bind ViewModel.CloseCommand}"
+                Style="{StaticResource IrisIconButtonStyle}"
+                ToolTipService.ToolTip="Cerrar">
+                <FontIcon Glyph="&#xE711;" Style="{StaticResource IrisIconStyle}" />
+            </Button>
+
+            <StackPanel Spacing="{StaticResource IrisSpacingLg}">
+                <StackPanel Spacing="{StaticResource IrisSpacingXs}">
+                    <TextBlock
+                        AutomationProperties.HeadingLevel="Level2"
+                        Style="{StaticResource IrisTitleTextStyle}"
+                        Text="Conexión" />
+                    <TextBlock Style="{StaticResource IrisCalloutTextStyle}" Text="{x:Bind ViewModel.ModeDescription, Mode=OneWay}" />
+                </StackPanel>
+
+                <controls:IrisSegmentedControl Items="{x:Bind ViewModel.Modes}" SelectedIndex="{x:Bind ViewModel.ModeIndex, Mode=TwoWay}" />
+
+                <controls:IrisTextField
+                    ErrorMessage="{x:Bind ViewModel.UrlError, Mode=OneWay}"
+                    Glyph="&#xE774;"
+                    Hint="Dirección de la API en la red local, con /api/v1 al final."
+                    Label="Dirección de la API"
+                    Placeholder="http://192.168.1.20:3020/api/v1"
+                    Text="{x:Bind ViewModel.ApiUrl, Mode=TwoWay}"
+                    Visibility="{x:Bind ViewModel.IsLive, Mode=OneWay}" />
+
+                <Grid ColumnSpacing="{StaticResource IrisSpacingMd}" Visibility="{x:Bind ViewModel.IsFake, Mode=OneWay}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel VerticalAlignment="Center" Spacing="2">
+                        <TextBlock Style="{StaticResource IrisBodyEmphasizedTextStyle}" Text="Simular sin conexión" />
+                        <TextBlock Style="{StaticResource IrisCalloutTextStyle}" Text="La API falsa responde como si no hubiera red." />
+                    </StackPanel>
+                    <ToggleSwitch
+                        Grid.Column="1"
+                        MinWidth="0"
+                        VerticalAlignment="Center"
+                        AutomationProperties.Name="Simular sin conexión"
+                        IsOn="{x:Bind ViewModel.SimulateOffline, Mode=TwoWay}"
+                        OffContent=""
+                        OnContent="" />
+                </Grid>
+
+                <controls:IrisBanner Kind="Success" Message="{x:Bind ViewModel.OkMessage, Mode=OneWay}" />
+                <controls:IrisBanner Kind="Error" Message="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}" />
+
+                <Grid ColumnSpacing="{StaticResource IrisSpacingSm}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Button
+                        Command="{x:Bind ViewModel.TestCommand}"
+                        Content="Probar"
+                        IsEnabled="{x:Bind ViewModel.IsIdle, Mode=OneWay}"
+                        Style="{StaticResource IrisGlassButtonStyle}" />
+                    <Button
+                        Grid.Column="1"
+                        Command="{x:Bind ViewModel.SaveAndRestartCommand}"
+                        Content="Guardar y reiniciar"
+                        Style="{StaticResource IrisPrimaryButtonStyle}" />
+                </Grid>
+
+                <Button
+                    HorizontalAlignment="Left"
+                    Command="{x:Bind ViewModel.AddTestSongCommand}"
+                    Content="Agregar canción de prueba"
+                    Style="{StaticResource IrisLinkButtonStyle}"
+                    Visibility="{x:Bind ViewModel.IsFake, Mode=OneWay}" />
+
+                <Button
+                    HorizontalAlignment="Left"
+                    Command="{x:Bind ViewModel.ResetFakeDataCommand}"
+                    Content="Restablecer datos de la API falsa"
+                    Style="{StaticResource IrisLinkButtonStyle}"
+                    Visibility="{x:Bind ViewModel.IsFake, Mode=OneWay}" />
+            </StackPanel>
+        </Grid>
+    </controls:IrisModal>
+</UserControl>

@@ -315,6 +315,7 @@
                     <Button
                         Command="{x:Bind ViewModel.SaveToTemplateCommand, Mode=OneWay}"
                         Content="Guardar en la plantilla"
+                        Visibility="{x:Bind ViewModel.CanUpdateTemplate, Mode=OneWay, FallbackValue=Visible}"
                         Style="{StaticResource IrisPrimaryButtonStyle}" />
                     <Button
                         Command="{x:Bind ViewModel.SaveOnlyTodayCommand, Mode=OneWay}"

@@ -148,5 +148,34 @@
                 Height="32"
                 IsActive="{x:Bind ViewModel.IsLoadingNumbers, Mode=OneWay, FallbackValue=False}" />
         </Grid>
+
+        <!--  The Bible is not on this PC yet: download progress, or a retry when there is no connection  -->
+        <Grid
+            Grid.Row="1"
+            Background="{StaticResource IrisCanvasElevatedBrush}"
+            Visibility="{x:Bind ViewModel.ShowsStatus, Mode=OneWay, FallbackValue=Collapsed}">
+            <StackPanel
+                MaxWidth="{StaticResource IrisReadableWidth}"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Spacing="{StaticResource IrisSpacingMd}">
+                <ProgressRing
+                    Width="32"
+                    Height="32"
+                    IsActive="{x:Bind ViewModel.IsDownloadingBible, Mode=OneWay, FallbackValue=False}"
+                    Visibility="{x:Bind ViewModel.IsDownloadingBible, Mode=OneWay, FallbackValue=Collapsed}" />
+                <TextBlock
+                    HorizontalAlignment="Center"
+                    Style="{StaticResource IrisCalloutTextStyle}"
+                    Text="{x:Bind ViewModel.StatusText, Mode=OneWay}"
+                    TextAlignment="Center" />
+                <Button
+                    HorizontalAlignment="Center"
+                    Command="{x:Bind ViewModel.RetryCommand, Mode=OneWay}"
+                    Content="Reintentar"
+                    Style="{StaticResource IrisPrimaryButtonStyle}"
+                    Visibility="{x:Bind ViewModel.CanRetry, Mode=OneWay, FallbackValue=Collapsed}" />
+            </StackPanel>
+        </Grid>
     </Grid>
 </UserControl>

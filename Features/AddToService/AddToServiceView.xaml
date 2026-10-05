@@ -55,6 +55,15 @@
                         <TextBlock Style="{StaticResource IrisCalloutEmphasizedTextStyle}" Text="{x:Bind Title}" />
                         <TextBlock Style="{StaticResource IrisCaptionTextStyle}" Text="{x:Bind Subtitle}" />
                         <TextBlock
+                            Style="{StaticResource IrisCaptionTextStyle}"
+                            Text="{x:Bind StatusText, Mode=OneWay}"
+                            Visibility="{x:Bind IsUnavailable, Mode=OneWay}" />
+                        <TextBlock
+                            Foreground="{StaticResource IrisTextTertiaryBrush}"
+                            Style="{StaticResource IrisCaptionTextStyle}"
+                            Text="{x:Bind Copyright}"
+                            Visibility="{x:Bind HasCopyright}" />
+                        <TextBlock
                             Margin="0,4,0,0"
                             FontFamily="{StaticResource IrisSerifTextFontFamily}"
                             FontSize="{StaticResource IrisCalloutFontSize}"
@@ -88,7 +97,25 @@
                 Style="{StaticResource IrisPressableButtonStyle}">
                 <StackPanel Spacing="{StaticResource IrisSpacingXs}">
                     <Grid CornerRadius="{StaticResource IrisRadiusMd}">
-                        <projection:ProjectionCanvas Frame="{x:Bind ThumbnailFrame}" />
+                        <projection:ProjectionCanvas DecodePixelWidth="{StaticResource IrisThumbnailDecodeWidth}" Frame="{x:Bind ThumbnailFrame, Mode=OneWay}" />
+                        <!--  Not on this PC yet: progress instead of the picture, and the tile cannot be chosen  -->
+                        <Grid Background="{StaticResource IrisScrimBrush}" Visibility="{x:Bind IsUnavailable, Mode=OneWay}">
+                            <StackPanel
+                                Margin="{StaticResource IrisPaddingXs}"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Spacing="{StaticResource IrisSpacingXs}">
+                                <ProgressBar
+                                    Width="{StaticResource IrisDownloadBarWidth}"
+                                    Maximum="100"
+                                    Value="{x:Bind ProgressPercent, Mode=OneWay}"
+                                    Visibility="{x:Bind IsDownloading, Mode=OneWay}" />
+                                <TextBlock
+                                    HorizontalAlignment="Center"
+                                    Style="{StaticResource IrisCaptionTextStyle}"
+                                    Text="{x:Bind StatusText, Mode=OneWay}" />
+                            </StackPanel>
+                        </Grid>
                         <Grid
                             Width="44"
                             Height="44"
@@ -214,11 +241,11 @@
                 <TextBlock
                     HorizontalAlignment="Center"
                     Style="{StaticResource IrisBodyEmphasizedTextStyle}"
-                    Text="Sin resultados" />
+                    Text="{x:Bind ViewModel.EmptyTitle, Mode=OneWay}" />
                 <TextBlock
                     HorizontalAlignment="Center"
                     Style="{StaticResource IrisCalloutTextStyle}"
-                    Text="Prueba con otro título, autor o descripción." />
+                    Text="{x:Bind ViewModel.EmptyMessage, Mode=OneWay}" />
             </StackPanel>
 
             <ProgressRing

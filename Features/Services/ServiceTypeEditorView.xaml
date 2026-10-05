@@ -136,12 +136,13 @@
                 Grid.Column="1"
                 VerticalAlignment="Center"
                 Command="{x:Bind ViewModel.CancelCommand, Mode=OneWay}"
-                Content="Cancelar"
+                Content="{x:Bind ViewModel.CancelText, Mode=OneWay, FallbackValue=Cancelar}"
                 Style="{StaticResource IrisPillButtonStyle}" />
             <Grid
                 Grid.Column="2"
                 Width="{StaticResource IrisSaveButtonWidth}"
-                VerticalAlignment="Center">
+                VerticalAlignment="Center"
+                Visibility="{x:Bind ViewModel.CanEdit, Mode=OneWay, FallbackValue=Visible}">
                 <Button
                     Command="{x:Bind ViewModel.SaveCommand, Mode=OneWay}"
                     Content="Guardar"
@@ -156,6 +157,7 @@
         </Grid>
 
         <ScrollViewer Grid.Row="1">
+            <ContentControl HorizontalContentAlignment="Stretch" IsEnabled="{x:Bind ViewModel.CanEdit, Mode=OneWay, FallbackValue=True}" IsTabStop="False">
             <StackPanel Padding="{StaticResource IrisSheetPadding}" Spacing="{StaticResource IrisSpacingXl}">
                 <!--  1. Name  -->
                 <controls:IrisTextField
@@ -275,8 +277,9 @@
                     Content="Eliminar servicio"
                     Foreground="{StaticResource IrisDangerBrush}"
                     Style="{StaticResource IrisLinkButtonStyle}"
-                    Visibility="{x:Bind ViewModel.IsEditing, Mode=OneWay, FallbackValue=Collapsed}" />
+                    Visibility="{x:Bind ViewModel.ShowsDelete, Mode=OneWay, FallbackValue=Collapsed}" />
             </StackPanel>
+            </ContentControl>
         </ScrollViewer>
 
         <!--  Confirmations inside the sheet  -->

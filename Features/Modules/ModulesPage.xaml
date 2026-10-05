@@ -77,6 +77,7 @@
                     </StackPanel>
 
                     <controls:IrisBanner Kind="Error" Message="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}" />
+                    <controls:IrisBanner Kind="Info" Message="{x:Bind ViewModel.ReadOnlyNote}" />
 
                     <StackPanel>
                         <ItemsRepeater ItemTemplate="{StaticResource ModuleRowTemplate}" ItemsSource="{x:Bind ViewModel.Rows}" />

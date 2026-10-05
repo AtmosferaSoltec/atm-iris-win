@@ -238,7 +238,10 @@
                     Style="{StaticResource IrisConsoleSurfaceStyle}">
                     <StackPanel Spacing="{StaticResource IrisSpacingSm}">
                         <Grid AutomationProperties.Name="Pantalla en vivo" CornerRadius="{StaticResource IrisRadiusMd}">
-                            <projection:ProjectionCanvas Frame="{x:Bind ViewModel.LiveFrame, Mode=OneWay}" UsesTransitions="True" />
+                            <projection:ProjectionCanvas
+                                Frame="{x:Bind ViewModel.LiveFrame, Mode=OneWay}"
+                                UsesTransitions="True"
+                                VideoRole="Preview" />
                             <Border
                                 BorderBrush="{StaticResource IrisStrokeStrongBrush}"
                                 BorderThickness="{StaticResource IrisHairline}"

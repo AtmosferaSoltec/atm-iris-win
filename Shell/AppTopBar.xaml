@@ -26,6 +26,7 @@
             <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="Auto" />
             <ColumnDefinition x:Name="CaptionColumn" Width="140" />
         </Grid.ColumnDefinitions>
 
@@ -73,8 +74,58 @@
                 Visibility="Collapsed" />
         </StackPanel>
 
-        <TextBlock
+        <!--  Sync indicator: state at a glance, details and "Actualizar ahora" in the flyout  -->
+        <Button
+            x:Name="SyncChip"
             Grid.Column="5"
+            VerticalAlignment="Center"
+            AutomationProperties.Name="Sincronización"
+            Style="{StaticResource IrisPillButtonStyle}"
+            ToolTipService.ToolTip="Estado de la sincronización"
+            Visibility="{x:Bind Sync.IsVisible, Mode=OneWay}">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+                <FontIcon
+                    FontSize="{StaticResource IrisCaptionFontSize}"
+                    Foreground="{x:Bind design:IrisTheme.SyncToneBrush(Sync.IsOffline, Sync.IsFailed), Mode=OneWay}"
+                    Glyph="&#xE895;"
+                    Style="{StaticResource IrisIconStyle}" />
+                <TextBlock
+                    Foreground="{x:Bind design:IrisTheme.SyncToneBrush(Sync.IsOffline, Sync.IsFailed), Mode=OneWay}"
+                    Text="{x:Bind Sync.Headline, Mode=OneWay}" />
+            </StackPanel>
+            <Button.Flyout>
+                <Flyout Placement="BottomEdgeAlignedRight" FlyoutPresenterStyle="{StaticResource IrisFlyoutPresenterStyle}">
+                    <StackPanel Width="{StaticResource IrisSyncFlyoutWidth}" Spacing="{StaticResource IrisSpacingSm}">
+                        <TextBlock Style="{StaticResource IrisBodyEmphasizedTextStyle}" Text="{x:Bind Sync.Headline, Mode=OneWay}" />
+                        <TextBlock Style="{StaticResource IrisCalloutTextStyle}" Text="{x:Bind Sync.LastSyncText, Mode=OneWay}" />
+                        <TextBlock Style="{StaticResource IrisCalloutTextStyle}" Text="{x:Bind Sync.PendingText, Mode=OneWay}" />
+                        <controls:IrisBanner Message="{x:Bind Sync.FailureText, Mode=OneWay}" />
+                        <controls:IrisBanner Kind="Info" Message="{x:Bind Sync.DiskWarning, Mode=OneWay}" />
+                        <ItemsControl ItemsSource="{x:Bind Sync.Notices, Mode=OneWay}" Visibility="{x:Bind Sync.HasNotices, Mode=OneWay}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="x:String">
+                                    <TextBlock Style="{StaticResource IrisCaptionTextStyle}" Text="{x:Bind}" TextWrapping="Wrap" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <Button
+                            HorizontalAlignment="Left"
+                            Command="{x:Bind Sync.DismissNoticesCommand}"
+                            Content="Descartar avisos"
+                            Style="{StaticResource IrisLinkButtonStyle}"
+                            Visibility="{x:Bind Sync.HasNotices, Mode=OneWay}" />
+                        <Button
+                            Command="{x:Bind Sync.SyncNowCommand}"
+                            Content="Actualizar ahora"
+                            IsEnabled="{x:Bind Sync.CanSyncNow, Mode=OneWay}"
+                            Style="{StaticResource IrisGlassButtonStyle}" />
+                    </StackPanel>
+                </Flyout>
+            </Button.Flyout>
+        </Button>
+
+        <TextBlock
+            Grid.Column="6"
             VerticalAlignment="Center"
             AutomationProperties.Name="Hora"
             Style="{StaticResource IrisClockTextStyle}"
@@ -82,11 +133,12 @@
 
         <Border
             x:Name="DisplayChip"
-            Grid.Column="6"
+            Grid.Column="7"
             Padding="12,6,14,6"
             VerticalAlignment="Center"
             Style="{StaticResource IrisGlassCapsuleStyle}"
-            ToolTipService.ToolTip="Pantalla del TV">
+            Tapped="OnDisplayChipTapped"
+            ToolTipService.ToolTip="{x:Bind ViewModel.DisplayTooltip, Mode=OneWay}">
             <StackPanel Orientation="Horizontal" Spacing="10">
                 <FontIcon
                     VerticalAlignment="Center"
@@ -106,7 +158,7 @@
 
         <Button
             x:Name="AccountButton"
-            Grid.Column="7"
+            Grid.Column="8"
             Width="{StaticResource IrisAvatarSize}"
             Height="{StaticResource IrisAvatarSize}"
             Padding="0"
@@ -122,21 +174,44 @@
             ToolTipService.ToolTip="Cuenta">
             <TextBlock FontSize="{StaticResource IrisCalloutFontSize}" Text="{x:Bind ViewModel.AccountInitials, Mode=OneWay}" />
             <Button.Flyout>
-                <MenuFlyout Placement="BottomEdgeAlignedRight">
-                    <MenuFlyoutItem IsEnabled="False" Text="{x:Bind ViewModel.ChurchName, Mode=OneWay}">
+                <MenuFlyout Opening="OnAccountFlyoutOpening" Placement="BottomEdgeAlignedRight">
+                    <MenuFlyoutItem IsEnabled="False" Text="{x:Bind ViewModel.FullName, Mode=OneWay}">
+                        <MenuFlyoutItem.Icon>
+                            <FontIcon Glyph="&#xE77B;" />
+                        </MenuFlyoutItem.Icon>
+                    </MenuFlyoutItem>
+                    <MenuFlyoutItem IsEnabled="False" Text="{x:Bind ViewModel.Email, Mode=OneWay}">
+                        <MenuFlyoutItem.Icon>
+                            <FontIcon Glyph="&#xE715;" />
+                        </MenuFlyoutItem.Icon>
+                    </MenuFlyoutItem>
+                    <MenuFlyoutItem IsEnabled="False" Text="{x:Bind ViewModel.AccountSummary, Mode=OneWay}">
                         <MenuFlyoutItem.Icon>
                             <FontIcon Glyph="&#xE825;" />
                         </MenuFlyoutItem.Icon>
                     </MenuFlyoutItem>
                     <MenuFlyoutSeparator />
-                    <MenuFlyoutItem
-                        Command="{x:Bind ViewModel.SignOutCommand}"
-                        Foreground="{StaticResource IrisDangerBrush}"
-                        Text="Cerrar sesión">
+                    <MenuFlyoutSubItem x:Name="ChurchSwitchItem" Text="Cambiar de iglesia">
+                        <MenuFlyoutSubItem.Icon>
+                            <FontIcon Glyph="&#xE8AB;" />
+                        </MenuFlyoutSubItem.Icon>
+                    </MenuFlyoutSubItem>
+                    <MenuFlyoutSeparator x:Name="ChurchSwitchSeparator" />
+                    <MenuFlyoutItem Command="{x:Bind ViewModel.SignOutCommand}" Text="Cerrar sesión">
                         <MenuFlyoutItem.Icon>
-                            <FontIcon Foreground="{StaticResource IrisDangerBrush}" Glyph="&#xF3B1;" />
+                            <FontIcon Glyph="&#xF3B1;" />
                         </MenuFlyoutItem.Icon>
                     </MenuFlyoutItem>
+                    <MenuFlyoutItem
+                        Command="{x:Bind ViewModel.SignOutAllCommand}"
+                        Foreground="{StaticResource IrisDangerBrush}"
+                        Text="Cerrar sesión en todos los dispositivos">
+                        <MenuFlyoutItem.Icon>
+                            <FontIcon Foreground="{StaticResource IrisDangerBrush}" Glyph="&#xE7E8;" />
+                        </MenuFlyoutItem.Icon>
+                    </MenuFlyoutItem>
+                    <MenuFlyoutSeparator />
+                    <MenuFlyoutItem IsEnabled="False" Text="El equipo se administra desde la web." />
                 </MenuFlyout>
             </Button.Flyout>
         </Button>

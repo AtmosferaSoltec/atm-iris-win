@@ -58,11 +58,13 @@ public sealed partial class ServiceTypesViewModel : ObservableObject
     private readonly IPeopleRepository _people;
     private readonly IModuleSettingsRepository _modules;
     private readonly SignedInNavigator _navigator;
+    private readonly SessionStore _session;
     private List<ServiceType> _all = [];
     private IReadOnlyList<Person> _peopleList = [];
 
-    public ServiceTypesViewModel(IServiceTypeRepository types, IPeopleRepository people, IModuleSettingsRepository modules, SignedInNavigator navigator)
+    public ServiceTypesViewModel(IServiceTypeRepository types, IPeopleRepository people, IModuleSettingsRepository modules, SignedInNavigator navigator, SessionStore session)
     {
+        _session = session;
         _types = types;
         _people = people;
         _modules = modules;
@@ -70,6 +72,9 @@ public sealed partial class ServiceTypesViewModel : ObservableObject
     }
 
     public ObservableCollection<ServiceTypeCardViewModel> Cards { get; } = [];
+
+    /// <summary>Without <see cref="Permission.ServiceTypesManage"/> there is no "Nuevo servicio" and the editor is read-only.</summary>
+    public bool CanManage => _session.Can(Permission.ServiceTypesManage);
 
     public IReadOnlyList<ServiceType> ServiceTypes => _all;
 
@@ -105,13 +110,19 @@ public sealed partial class ServiceTypesViewModel : ObservableObject
     private void GoHome() => _navigator.GoHome();
 
     [RelayCommand]
-    private void CreateServiceType() => OpenEditor(null);
+    private void CreateServiceType()
+    {
+        if (CanManage)
+        {
+            OpenEditor(null);
+        }
+    }
 
     [RelayCommand]
     private void Edit(ServiceTypeCardViewModel card) => OpenEditor(card.Type);
 
     private void OpenEditor(ServiceType? type) =>
-        Editor = new ServiceTypeEditorViewModel(type, _all, Modules, _peopleList, _types, _people, OnEditorDone);
+        Editor = new ServiceTypeEditorViewModel(type, _all, Modules, _peopleList, _types, _people, OnEditorDone, CanManage);
 
     private void OnEditorDone(EditorResult? result)
     {

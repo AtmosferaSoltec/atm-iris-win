@@ -9,6 +9,7 @@ using CommunityToolkit.Mvvm.Input;
 using Iris.Core.Formatting;
 using Iris.Core.Models;
 using Iris.Core.Services;
+using Iris.Core.Sync;
 using Iris.Core.Timing;
 using Iris.Features.Services;
 using Iris.Shell;
@@ -34,6 +35,9 @@ public sealed partial class BlockTimerViewModel : ObservableObject
     private ServiceRecord? _pendingRecord;
     private bool _exitAfterSaving;
     private bool _isRebuildingPending;
+    private readonly bool _canSaveRecords;
+    private readonly ISyncService? _sync;
+    private readonly IUiDispatcher? _ui;
 
     public BlockTimerViewModel(
         ServiceType type,
@@ -43,8 +47,16 @@ public sealed partial class BlockTimerViewModel : ObservableObject
         ITimeRecordRepository records,
         SignedInNavigator navigator,
         DateTime launchedAt,
-        Func<DateTime>? clock = null)
+        Func<DateTime>? clock = null,
+        bool canUpdateTemplate = true,
+        bool canSaveRecords = true,
+        ISyncService? sync = null,
+        IUiDispatcher? ui = null)
     {
+        _sync = sync;
+        _ui = ui;
+        CanUpdateTemplate = canUpdateTemplate;
+        _canSaveRecords = canSaveRecords;
         _type = type;
         _people = people.ToList();
         _types = types;
@@ -78,6 +90,9 @@ public sealed partial class BlockTimerViewModel : ObservableObject
     public bool IsRunning => Phase == TimerPhase.Running;
 
     public bool IsFinished => Phase == TimerPhase.Finished;
+
+    /// <summary>"Guardar en la plantilla" needs <see cref="Permission.ServiceTypesManage"/>; without it only "Solo hoy" is offered.</summary>
+    public bool CanUpdateTemplate { get; }
 
     // ===== Not started =====
 
@@ -154,6 +169,19 @@ public sealed partial class BlockTimerViewModel : ObservableObject
 
     public bool HasRecordError => RecordError is not null;
 
+    /// <summary>The record is saved on this PC but still waits to reach the server (amber "Se enviará cuando haya conexión").</summary>
+    [ObservableProperty]
+    public partial bool IsRecordPending { get; set; }
+
+    private async Task RefreshPendingAsync()
+    {
+        if (FinishedRecord is { } record && IsRecordSaved)
+        {
+            IsRecordPending = await _records.IsPendingAsync(record.Id);
+        }
+    }
+
+    private void OnSyncStatusChanged(object? sender, SyncStatus status) => _ui?.Post(() => _ = RefreshPendingAsync());
     /// <summary>"Servicio terminado · 1:26:10 (previsto 1:10:00 · +16:10)" or "… · a tiempo)".</summary>
     public string FinishedSummary
     {
@@ -345,7 +373,7 @@ public sealed partial class BlockTimerViewModel : ObservableObject
         IsConfirmingFinish = false;
         Timer.Finish(_clock());
         StopClock();
-        _pendingRecord = Timer.Record(_type.Id, _launchedAt, PeopleNames());
+        _pendingRecord = Timer.Record(_type.Id, _launchedAt, PeopleNames(), _type.Name);
         FinishedRecord = _pendingRecord;
         Changed();
         if (Timer.HasTemplateChanges)
@@ -374,15 +402,28 @@ public sealed partial class BlockTimerViewModel : ObservableObject
         }
 
         RecordError = null;
+        if (!_canSaveRecords)
+        {
+            RecordError = "No tienes permiso para guardar los tiempos.";
+            return;
+        }
+
         try
         {
-            if (updatingTemplate)
+            if (updatingTemplate && CanUpdateTemplate)
             {
                 await _types.SaveAsync(_type with { Blocks = Timer.UpdatedTemplate(_type.Blocks) });
             }
 
             await _records.SaveAsync(record);
             IsRecordSaved = true;
+            if (_sync is not null)
+            {
+                _sync.StatusChanged -= OnSyncStatusChanged;
+                _sync.StatusChanged += OnSyncStatusChanged;
+            }
+
+            await RefreshPendingAsync();
             if (_exitAfterSaving)
             {
                 _navigator.GoHome();
@@ -440,7 +481,14 @@ public sealed partial class BlockTimerViewModel : ObservableObject
     [RelayCommand]
     private void CancelExit() => IsConfirmingExit = false;
 
-    public void Stop() => StopClock();
+    public void Stop()
+    {
+        StopClock();
+        if (_sync is not null)
+        {
+            _sync.StatusChanged -= OnSyncStatusChanged;
+        }
+    }
 
     // ===== Helpers =====
 

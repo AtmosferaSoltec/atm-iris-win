@@ -98,7 +98,13 @@ public sealed partial class PlaybackViewModel : ObservableObject
 
     public string Title { get; }
 
-    public double Duration { get; }
+    /// <summary>Length in seconds: the announced one until a real player reports the file's own.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(Progress), nameof(RemainingText))]
+    public partial double Duration { get; set; }
+
+    /// <summary>A real player drives <see cref="Elapsed"/>; otherwise the console's own clock simulates it (design data).</summary>
+    public bool IsReal { get; set; }
 
     public bool IsVideo => Kind == ServiceItemKind.Video;
 
@@ -124,6 +130,20 @@ public sealed partial class PlaybackViewModel : ObservableObject
     public string StatusText => !IsPlaying ? "En pausa" : IsVideo ? "Reproduciendo en el TV" : "Sonando en el salón";
 
     public string PlayPauseName => IsPlaying ? "Pausar" : "Reproducir";
+
+    /// <summary>Takes the real position, length and state from the player without treating it as a user seek.</summary>
+    public void SetFromPlayer(double elapsed, double duration, bool isPlaying)
+    {
+        _isTicking = true;
+        if (duration > 0)
+        {
+            Duration = duration;
+        }
+
+        Elapsed = Math.Clamp(elapsed, 0, Duration);
+        _isTicking = false;
+        IsPlaying = isPlaying;
+    }
 
     /// <summary>Advances the simulated clock without treating it as a user seek.</summary>
     public void Tick(double seconds)

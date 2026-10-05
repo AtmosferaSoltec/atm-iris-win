@@ -27,15 +27,18 @@ public sealed record PickerCell(string Title, string? Detail, object Value, ICom
 }
 
 /// <summary>Book → chapter → verse picker (IRIS_SPEC §6.3).</summary>
-public sealed partial class BiblePickerViewModel : ObservableObject
+public sealed partial class BiblePickerViewModel : ObservableObject, IDisposable
 {
     private readonly IBibleRepository _bible;
+    private readonly IUiDispatcher? _ui;
+    private bool _disposed;
     private readonly Func<BibleBook, int, int, Task> _onVerseSelected;
     private IReadOnlyList<BibleBook> _books = [];
 
-    public BiblePickerViewModel(IBibleRepository bible, Func<BibleBook, int, int, Task> onVerseSelected)
+    public BiblePickerViewModel(IBibleRepository bible, Func<BibleBook, int, int, Task> onVerseSelected, IUiDispatcher? ui = null)
     {
         _bible = bible;
+        _ui = ui;
         _onVerseSelected = onVerseSelected;
     }
 
@@ -89,7 +92,7 @@ public sealed partial class BiblePickerViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(HasNoBooks))]
     public partial bool IsLoaded { get; set; }
 
-    public bool HasNoBooks => IsLoaded && Books.Count == 0;
+    public bool HasNoBooks => IsLoaded && Books.Count == 0 && IsBibleReady;
 
     [ObservableProperty]
     public partial bool IsLoadingNumbers { get; set; }
@@ -100,11 +103,75 @@ public sealed partial class BiblePickerViewModel : ObservableObject
     [ObservableProperty]
     public partial int SelectedChapter { get; set; }
 
+    // ----- The Bible may still be downloading (first run) -----
+
+    public bool IsBibleReady => _bible.Status.Phase == BiblePhase.Ready;
+
+    public bool ShowsStatus => !IsBibleReady;
+
+    public bool IsDownloadingBible => _bible.Status.Phase == BiblePhase.Downloading;
+
+    public bool CanRetry => _bible.Status.Phase is BiblePhase.Failed or BiblePhase.NotDownloaded;
+
+    public double ProgressPercent => _bible.Status.Progress * 100;
+
+    public string StatusText => _bible.Status.Phase switch
+    {
+        BiblePhase.Downloading => $"Descargando la Biblia… {(int)Math.Round(_bible.Status.Progress * 100)} %",
+        BiblePhase.Failed => _bible.Status.Message ?? "No pudimos descargar la Biblia.",
+        _ => "Necesitas conexión para descargar la Biblia la primera vez.",
+    };
+
     public async Task LoadAsync()
     {
+        _bible.StatusChanged += OnBibleStatusChanged;
         _books = await _bible.BooksAsync();
         IsLoaded = true;
         FilterBooks();
+        RefreshStatus();
+    }
+
+    public void Dispose()
+    {
+        _disposed = true;
+        _bible.StatusChanged -= OnBibleStatusChanged;
+    }
+
+    [RelayCommand]
+    private Task RetryAsync() => _bible.RetryAsync();
+
+    private void OnBibleStatusChanged(object? sender, EventArgs e)
+    {
+        if (_ui is null)
+        {
+            return;
+        }
+
+        _ui.Post(async () =>
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            RefreshStatus();
+            if (IsBibleReady && _books.Count == 0)
+            {
+                _books = await _bible.BooksAsync();
+                FilterBooks();
+            }
+        });
+    }
+
+    private void RefreshStatus()
+    {
+        OnPropertyChanged(nameof(IsBibleReady));
+        OnPropertyChanged(nameof(ShowsStatus));
+        OnPropertyChanged(nameof(IsDownloadingBible));
+        OnPropertyChanged(nameof(CanRetry));
+        OnPropertyChanged(nameof(ProgressPercent));
+        OnPropertyChanged(nameof(StatusText));
+        OnPropertyChanged(nameof(HasNoBooks));
     }
 
     partial void OnTestamentIndexChanged(int value) => FilterBooks();

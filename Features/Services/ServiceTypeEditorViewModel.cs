@@ -133,8 +133,10 @@ public sealed partial class ServiceTypeEditorViewModel : ObservableObject
         IReadOnlyList<Person> people,
         IServiceTypeRepository types,
         IPeopleRepository peopleRepository,
-        Action<EditorResult?> onDone)
+        Action<EditorResult?> onDone,
+        bool canEdit = true)
     {
+        CanEdit = canEdit;
         _original = original;
         _allTypes = allTypes;
         _types = types;
@@ -162,11 +164,18 @@ public sealed partial class ServiceTypeEditorViewModel : ObservableObject
         Validate();
     }
 
+    /// <summary>False without <see cref="Permission.ServiceTypesManage"/>: the sheet opens read-only.</summary>
+    public bool CanEdit { get; }
+
+    public string CancelText => CanEdit ? "Cancelar" : "Cerrar";
+
+    public bool ShowsDelete => IsEditing && CanEdit;
+
     public bool IsNew => _original is null;
 
     public bool IsEditing => !IsNew;
 
-    public string Title => IsNew ? "Nuevo servicio" : "Editar servicio";
+    public string Title => !CanEdit ? "Servicio" : IsNew ? "Nuevo servicio" : "Editar servicio";
 
     public ChurchModules Modules { get; }
 
@@ -218,7 +227,7 @@ public sealed partial class ServiceTypeEditorViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(CanSave))]
     public partial bool IsSaving { get; set; }
 
-    public bool CanSave => !IsSaving && !string.IsNullOrWhiteSpace(Name) && NameError is null && BlocksError is null
+    public bool CanSave => CanEdit && !IsSaving && !string.IsNullOrWhiteSpace(Name) && NameError is null && BlocksError is null
         && (!ShowsBlocks || Blocks.All(b => !b.HasNameError));
 
     // ===== Confirmations =====

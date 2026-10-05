@@ -29,6 +29,7 @@ public sealed partial class MainWindow : Window
     private readonly SessionStore _session = App.GetService<SessionStore>();
     private readonly SignedInNavigator _navigator = App.GetService<SignedInNavigator>();
     private IReadOnlyList<FrameworkElement> _interactive = [];
+    private bool _started;
 
     public MainWindow()
     {
@@ -59,7 +60,7 @@ public sealed partial class MainWindow : Window
         _session.PropertyChanged += OnSessionChanged;
         _navigator.PropertyChanged += OnRouteChanged;
         Closed += (_, _) => (App.GetService<IDisplayOutputService>() as ProjectionDisplayService)?.Shutdown();
-        ShowScreen();
+        Start();
     }
 
     /// <summary>Right inset (DIPs) taken by the minimize/maximize/close buttons.</summary>
@@ -105,7 +106,7 @@ public sealed partial class MainWindow : Window
 
     private void OnSessionChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(SessionStore.Session))
+        if (e.PropertyName == nameof(SessionStore.IsSignedIn) && _started)
         {
             ShowScreen();
         }
@@ -114,10 +115,26 @@ public sealed partial class MainWindow : Window
     // Signed out, route changes are ignored: the access screen is already showing.
     private void OnRouteChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(SignedInNavigator.Route) && _session.Session is not null)
+        if (e.PropertyName == nameof(SignedInNavigator.Route) && _started && _session.IsSignedIn)
         {
             ShowScreen();
         }
+    }
+
+    // The splash covers the window while the stored session is restored (local only, never waits for the network).
+    private async void Start()
+    {
+        // Background tasks that follow each sync (file downloads); absent in Mock mode.
+        _ = App.Services.GetService(typeof(Iris.Core.Sync.PostSyncCoordinator));
+        await _session.StartAsync();
+        _started = true;
+        ShowScreen();
+    }
+
+    private void OnConnectionAccelerator(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
+    {
+        args.Handled = true;
+        ConnectionDialog.ViewModel.Open();
     }
 
     private void OnSplashFinished(object? sender, System.EventArgs e) => Root.Children.Remove(Splash);

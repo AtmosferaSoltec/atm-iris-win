@@ -50,4 +50,10 @@ Fases 02 y 04.
 
 ## Desviaciones
 
-_(Completar al cerrar la fase.)_
+- En esta PC no hay `ffmpeg`, así que **no hay muestra de video**, y `Assets/DevSamples/` no se creó. La API falsa ofrece 2 imágenes (una marcada como fondo) y un audio de prueba; el audio es un tono **WAV** (`audio/wav`, tipo permitido por el contrato) y no un MP3. Para probar video hay que subir uno desde la web real o instalar `ffmpeg` y agregar la fila en `FakeSeed`.
+- Las imágenes de muestra se generan con un codificador PNG propio en `Core/Networking/Fake/FakeSamples.cs` en lugar de `BitmapEncoder`, porque la API falsa vive en `Core` (sin dependencias de WinUI/WinRT). Son determinísticas: el tamaño anunciado coincide con los bytes que se sirven.
+- La API falsa implementa también la subida (`POST /media/uploads`, `PUT` a `fake-storage.iris.local`, `POST /media`), `PATCH` y `DELETE`, y la descarga con `Range`, aunque la consola solo lee.
+- Las descargas se reanudan con `Range` desde el archivo `.part` (tras un reinicio o un corte); si el servidor no admite `Range` se vuelve a empezar.
+- Las miniaturas de video usan la miniatura del Explorador (`StorageFile.GetThumbnailAsync`); si no hay códec queda el degradado con la marca de reproducir. El reproductor real llega en la fase 09.
+- La caché borra, además de los archivos viejos de la iglesia, las carpetas de otras iglesias.
+- La capa visual (progreso de descarga en las celdas, miniaturas reales, fondo con imagen y velo del 20 %) no se pudo revisar con la app abierta en esta sesión.

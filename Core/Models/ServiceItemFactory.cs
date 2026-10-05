@@ -14,12 +14,12 @@ public static class ServiceItemFactory
     {
         MediaKind.Music => new(Guid.NewGuid(), ServiceItemKind.Music, asset.Title,
             $"{asset.Subtitle} · {DurationText.Format(asset.Duration ?? TimeSpan.Zero)}",
-            [Slide.Create(new AudioContent(asset.Title, asset.Duration ?? TimeSpan.Zero))]),
+            [Slide.Create(new AudioContent(asset.Title, asset.Duration ?? TimeSpan.Zero, asset.LocalPath))]),
         MediaKind.Video => new(Guid.NewGuid(), ServiceItemKind.Video, asset.Title,
             $"Video · {DurationText.Format(asset.Duration ?? TimeSpan.Zero)}",
-            [Slide.Create(new VideoContent(asset.Title, asset.Duration ?? TimeSpan.Zero))]),
+            [Slide.Create(new VideoContent(asset.Title, asset.Duration ?? TimeSpan.Zero, asset.LocalPath))]),
         _ => new(Guid.NewGuid(), ServiceItemKind.Image, asset.Title, asset.Subtitle,
-            [Slide.Create(new ImageContent(asset.Title, asset.Artwork))]),
+            [Slide.Create(new ImageContent(asset.Title, asset.Artwork, asset.LocalPath))]),
     };
 
     public static ServiceItem FromScripture(BibleBook book, int chapter, IReadOnlyList<BibleVerse> verses, string translation) =>

@@ -86,7 +86,8 @@
                         Width="{StaticResource IrisNewServiceButtonWidth}"
                         VerticalAlignment="Center"
                         Command="{x:Bind ViewModel.CreateServiceTypeCommand}"
-                        Style="{StaticResource IrisPrimaryButtonStyle}">
+                        Style="{StaticResource IrisPrimaryButtonStyle}"
+                        Visibility="{x:Bind ViewModel.CanManage}">
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <FontIcon
                                 FontSize="{StaticResource IrisCaptionFontSize}"
@@ -126,7 +127,8 @@
                             Width="{StaticResource IrisNewServiceButtonWidth}"
                             Command="{x:Bind ViewModel.CreateServiceTypeCommand}"
                             Content="Crear el primero"
-                            Style="{StaticResource IrisPrimaryButtonStyle}" />
+                            Style="{StaticResource IrisPrimaryButtonStyle}"
+                            Visibility="{x:Bind ViewModel.CanManage}" />
                     </StackPanel>
 
                     <ProgressRing

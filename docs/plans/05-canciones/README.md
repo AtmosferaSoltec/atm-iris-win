@@ -29,4 +29,6 @@ Fase 02.
 
 ## Desviaciones
 
-_(Completar al cerrar la fase.)_
+- La consola no llama a `GET /songs`: la biblioteca sale siempre de la copia local (la búsqueda de "Agregar al servicio" es local y ahora incluye el texto de todas las secciones). Aun así la API falsa implementa `/songs` completo (lista paginada con búsqueda y relevancia, detalle, crear, reemplazar, borrar e importar) porque el contrato lo define y las pruebas lo ejercitan.
+- Hasta la fase 06 `LiveLibraryRepository.MediaAsync` devuelve lo que haya en la copia local con miniaturas de relleno; la fase 06 lo completa con archivos reales.
+- El botón "Agregar canción de prueba" del diálogo Conexión solo funciona en modo Fake con la sesión iniciada (necesita la iglesia activa); la canción aparece tras "Actualizar ahora".

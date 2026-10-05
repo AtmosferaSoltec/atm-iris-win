@@ -65,8 +65,29 @@ public static class IrisTheme
     public static Brush StatusBrush(bool isOn) => Brush(isOn ? "IrisSuccessBrush" : "IrisTextTertiaryBrush");
 
     /// <summary>x:Bind helper for swatches.</summary>
-    public static Brush BackgroundBrush(ProjectionBackground? background) =>
-        background is null ? Brush("IrisBlackBrush") : DiagonalGradient(background.Colors);
+    public static Brush BackgroundBrush(ProjectionBackground? background)
+    {
+        if (background is null)
+        {
+            return Brush("IrisBlackBrush");
+        }
+
+        // A church picture shows as a small decoded copy; unreadable files fall back to the gradient.
+        if (background.ImagePath is { } path && System.IO.File.Exists(path))
+        {
+            return new Microsoft.UI.Xaml.Media.ImageBrush
+            {
+                Stretch = Microsoft.UI.Xaml.Media.Stretch.UniformToFill,
+                ImageSource = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage { DecodePixelWidth = 240, UriSource = new Uri(path) },
+            };
+        }
+
+        return DiagonalGradient(background.Colors);
+    }
+
+    /// <summary>x:Bind helper for the sync chip: warning offline, danger on failure, secondary otherwise.</summary>
+    public static Brush SyncToneBrush(bool isOffline, bool isFailed) =>
+        Brush(isFailed ? "IrisDangerBrush" : isOffline ? "IrisWarningBrush" : "IrisTextSecondaryBrush");
 
     /// <summary>x:Bind helper: TV connected (success) or missing (warning).</summary>
     public static Brush DisplayStatusBrush(bool isConnected) => Brush(isConnected ? "IrisSuccessBrush" : "IrisWarningBrush");

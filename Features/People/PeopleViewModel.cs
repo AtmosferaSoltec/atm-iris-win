@@ -39,17 +39,22 @@ public sealed partial class PeopleViewModel : ObservableObject
     private readonly IPeopleRepository _people;
     private readonly ITimeRecordRepository _records;
     private readonly SignedInNavigator _navigator;
+    private readonly SessionStore _session;
     private IReadOnlyList<Person> _all = [];
     private IReadOnlyDictionary<Guid, int> _blockCounts = new Dictionary<Guid, int>();
 
-    public PeopleViewModel(IPeopleRepository people, ITimeRecordRepository records, SignedInNavigator navigator)
+    public PeopleViewModel(IPeopleRepository people, ITimeRecordRepository records, SignedInNavigator navigator, SessionStore session)
     {
+        _session = session;
         _people = people;
         _records = records;
         _navigator = navigator;
     }
 
     public ObservableCollection<PersonRowViewModel> Rows { get; } = [];
+
+    /// <summary>All three roles have <see cref="Permission.PeopleManage"/> today; the commands still ask, so a future role without it just gets them disabled.</summary>
+    public bool CanManage => _session.Can(Permission.PeopleManage);
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsEmpty))]
@@ -114,7 +119,7 @@ public sealed partial class PeopleViewModel : ObservableObject
     [RelayCommand]
     private void GoHome() => _navigator.GoHome();
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanManage))]
     private async Task AddAsync()
     {
         var error = Validate(NewName, except: null);
@@ -146,7 +151,7 @@ public sealed partial class PeopleViewModel : ObservableObject
         ErrorMessage = null;
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanManage))]
     private void BeginRename(PersonRowViewModel row)
     {
         RenameError = null;
@@ -186,7 +191,7 @@ public sealed partial class PeopleViewModel : ObservableObject
         }
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanManage))]
     private void RequestDelete(PersonRowViewModel row) => PendingDeletion = row.Person;
 
     [RelayCommand]

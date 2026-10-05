@@ -25,18 +25,20 @@ public sealed partial class TimesViewModel : ObservableObject
     private readonly IPeopleRepository _people;
     private readonly SignedInNavigator _navigator;
     private readonly Func<DateTime> _now;
+    private readonly SessionStore _session;
     private List<ServiceRecord> _all = [];
     private IReadOnlyList<ServiceType> _typeList = [];
     private IReadOnlyList<Person> _peopleList = [];
     private TimeStatistics? _stats;
 
-    public TimesViewModel(ITimeRecordRepository records, IServiceTypeRepository types, IPeopleRepository people, SignedInNavigator navigator, Func<DateTime>? now = null)
+    public TimesViewModel(ITimeRecordRepository records, IServiceTypeRepository types, IPeopleRepository people, SignedInNavigator navigator, SessionStore session, ChurchClock clock, Func<DateTime>? now = null)
     {
+        _session = session;
         _records = records;
         _types = types;
         _people = people;
         _navigator = navigator;
-        _now = now ?? (() => DateTime.Now);
+        _now = now ?? (() => clock.Now);
     }
 
     public IList<string> Tabs { get; } = ["Registros", "Resúmenes"];
@@ -64,7 +66,7 @@ public sealed partial class TimesViewModel : ObservableObject
     [RelayCommand]
     private async Task LoadAsync()
     {
-        IsLoading = true;
+        IsLoading = _all.Count == 0;
         var records = _records.RecordsAsync();
         var types = _types.ServiceTypesAsync();
         var people = _people.PeopleAsync();
@@ -100,13 +102,16 @@ public sealed partial class TimesViewModel : ObservableObject
 
     public ObservableCollection<RecordGroup> Groups { get; } = [];
 
+    /// <summary>Adjusting, changing the leader and deleting need <see cref="Permission.RecordsManage"/>; without it the "•••" menu and "Eliminar registro" do not appear.</summary>
+    public bool CanManage => _session.Can(Permission.RecordsManage);
+
     public ServiceRecord? SelectedRecord => _all.FirstOrDefault(r => r.Id == SelectedRecordId);
 
     public bool HasSelection => SelectedRecord is not null;
 
     public bool HasNoSelection => HasRecords && SelectedRecord is null;
 
-    public string DetailTitle => SelectedRecord is { } r ? TypeName(r.ServiceTypeId) : string.Empty;
+    public string DetailTitle => SelectedRecord is { } r ? TypeName(r.ServiceTypeId, r.ServiceTypeName) : string.Empty;
 
     public string DetailDate => SelectedRecord is { } r ? Spanish.LongDate(r.Date) : string.Empty;
 
@@ -147,7 +152,7 @@ public sealed partial class TimesViewModel : ObservableObject
 
     public bool IsAdjusting => Adjustment is not null;
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanManage))]
     private void BeginAdjustment(BlockDetailRow row)
     {
         if (SelectedRecord is { } record)
@@ -189,7 +194,7 @@ public sealed partial class TimesViewModel : ObservableObject
             .. SortedPeople.Select(p => new LeaderChoice(p, p.Name, row.Block.PersonId == p.Id, this)),
         ];
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanManage))]
     private void BeginLeaderChange(BlockDetailRow row) => LeaderTarget = row;
 
     [RelayCommand]
@@ -214,7 +219,7 @@ public sealed partial class TimesViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(IsModalOpen))]
     public partial bool IsConfirmingDelete { get; set; }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanManage))]
     private void RequestDeleteSelected() => IsConfirmingDelete = SelectedRecord is not null;
 
     [RelayCommand]
@@ -287,7 +292,7 @@ public sealed partial class TimesViewModel : ObservableObject
         {
             Groups.Add(new RecordGroup(
                 Spanish.MonthYear(month.Key.Year, month.Key.Month).ToUpper(Spanish.Culture),
-                month.Select(r => new RecordRowViewModel(r, TypeName(r.ServiceTypeId), TypeColor(r.ServiceTypeId), this) { IsSelected = r.Id == SelectedRecordId }).ToList()));
+                month.Select(r => new RecordRowViewModel(r, TypeName(r.ServiceTypeId, r.ServiceTypeName), TypeColor(r.ServiceTypeId), this) { IsSelected = r.Id == SelectedRecordId }).ToList()));
         }
 
         foreach (var name in RecordProperties)
@@ -494,7 +499,7 @@ public sealed partial class TimesViewModel : ObservableObject
     public IReadOnlyList<PersonBlockRow> PersonDetailBlocks => PersonDetail is { } row && _stats is not null
         ? _stats.BlocksOf(row.PersonId).Select(e => new PersonBlockRow(
             Spanish.ShortDate(e.Record.Date),
-            TypeName(e.Record.ServiceTypeId),
+            TypeName(e.Record.ServiceTypeId, e.Record.ServiceTypeName),
             e.Block.Name,
             $"{IrisDurationFormat.Clock(e.Block.ActualSeconds)} / {IrisDurationFormat.Clock(e.Block.PlannedSeconds)}",
             e.Block.IsOver ? IrisDurationFormat.Delta(e.Block.Overtime) : "a tiempo",
@@ -539,7 +544,14 @@ public sealed partial class TimesViewModel : ObservableObject
     ];
 
     /// <summary>A deleted type shows "Servicio eliminado".</summary>
-    private string TypeName(Guid id) => _typeList.FirstOrDefault(t => t.Id == id)?.Name ?? "Servicio eliminado";
+    /// <summary>Current name; else the name saved in the record; else "Servicio eliminado".</summary>
+    private string TypeName(Guid id, string? storedName = null) =>
+        _typeList.FirstOrDefault(t => t.Id == id)?.Name
+        ?? (string.IsNullOrWhiteSpace(storedName) ? FindStoredTypeName(id) : storedName)
+        ?? "Servicio eliminado";
+
+    private string? FindStoredTypeName(Guid id) =>
+        _all.FirstOrDefault(r => r.ServiceTypeId == id && !string.IsNullOrWhiteSpace(r.ServiceTypeName))?.ServiceTypeName;
 
     private string TypeColor(Guid id) => _typeList.FirstOrDefault(t => t.Id == id)?.Color ?? "#F6F3EE";
 
