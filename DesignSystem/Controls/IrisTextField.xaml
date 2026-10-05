@@ -6,24 +6,143 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     IsTabStop="False">
     <UserControl.Resources>
-        <!--  Lightweight styling: the inner TextBox/PasswordBox draw no chrome; the container does.  -->
-        <SolidColorBrush x:Key="TextControlBackground" Color="Transparent" />
-        <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="Transparent" />
-        <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="Transparent" />
-        <SolidColorBrush x:Key="TextControlBackgroundDisabled" Color="Transparent" />
-        <SolidColorBrush x:Key="TextControlBorderBrush" Color="Transparent" />
-        <SolidColorBrush x:Key="TextControlBorderBrushPointerOver" Color="Transparent" />
-        <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="Transparent" />
-        <SolidColorBrush x:Key="TextControlBorderBrushDisabled" Color="Transparent" />
-        <StaticResource x:Key="TextControlForeground" ResourceKey="IrisTextPrimaryBrush" />
-        <StaticResource x:Key="TextControlForegroundPointerOver" ResourceKey="IrisTextPrimaryBrush" />
-        <StaticResource x:Key="TextControlForegroundFocused" ResourceKey="IrisTextPrimaryBrush" />
-        <StaticResource x:Key="TextControlPlaceholderForeground" ResourceKey="IrisTextTertiaryBrush" />
-        <StaticResource x:Key="TextControlPlaceholderForegroundPointerOver" ResourceKey="IrisTextTertiaryBrush" />
-        <StaticResource x:Key="TextControlPlaceholderForegroundFocused" ResourceKey="IrisTextTertiaryBrush" />
-        <StaticResource x:Key="TextControlButtonForeground" ResourceKey="IrisTextSecondaryBrush" />
-        <Thickness x:Key="TextControlBorderThemeThickness">0</Thickness>
-        <Thickness x:Key="TextControlBorderThemeThicknessFocused">0</Thickness>
+        <!--
+            Bare templates for the inner TextBox/PasswordBox: no chrome (the container draws it) and the text
+            centered vertically. The stock template pins the text to the top of its row, which no
+            VerticalContentAlignment/Padding combination fixes, so the template parts are re-declared here.
+            Template part names (ContentElement, PlaceholderTextContentPresenter, DeleteButton) are the ones
+            TextBox/PasswordBox look up in code; the placeholder visibility and the delete click are handled by them.
+        -->
+        <Style x:Key="IrisBareTextBoxStyle" TargetType="TextBox">
+            <Setter Property="Foreground" Value="{StaticResource IrisTextPrimaryBrush}" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="MinWidth" Value="0" />
+            <Setter Property="FontFamily" Value="{StaticResource IrisSansFontFamily}" />
+            <Setter Property="FontSize" Value="{StaticResource IrisBodyFontSize}" />
+            <Setter Property="SelectionHighlightColor" Value="{StaticResource IrisCoralBrush}" />
+            <Setter Property="ScrollViewer.HorizontalScrollMode" Value="Auto" />
+            <Setter Property="ScrollViewer.VerticalScrollMode" Value="Auto" />
+            <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Hidden" />
+            <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Hidden" />
+            <Setter Property="ScrollViewer.IsDeferredScrollingEnabled" Value="False" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Grid x:Name="RootGrid" Background="Transparent">
+                            <VisualStateManager.VisualStateGroups>
+                                <VisualStateGroup x:Name="CommonStates">
+                                    <VisualState x:Name="Normal" />
+                                    <VisualState x:Name="PointerOver" />
+                                    <VisualState x:Name="Focused" />
+                                    <VisualState x:Name="Disabled">
+                                        <VisualState.Setters>
+                                            <Setter Target="RootGrid.Opacity" Value="{StaticResource IrisDisabledOpacity}" />
+                                        </VisualState.Setters>
+                                    </VisualState>
+                                </VisualStateGroup>
+                                <VisualStateGroup x:Name="ButtonStates">
+                                    <VisualState x:Name="ButtonVisible">
+                                        <VisualState.Setters>
+                                            <Setter Target="DeleteButton.Visibility" Value="Visible" />
+                                        </VisualState.Setters>
+                                    </VisualState>
+                                    <VisualState x:Name="ButtonCollapsed" />
+                                </VisualStateGroup>
+                            </VisualStateManager.VisualStateGroups>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <ScrollViewer
+                                x:Name="ContentElement"
+                                VerticalAlignment="Center"
+                                AutomationProperties.AccessibilityView="Raw"
+                                HorizontalScrollBarVisibility="{TemplateBinding ScrollViewer.HorizontalScrollBarVisibility}"
+                                HorizontalScrollMode="{TemplateBinding ScrollViewer.HorizontalScrollMode}"
+                                IsDeferredScrollingEnabled="{TemplateBinding ScrollViewer.IsDeferredScrollingEnabled}"
+                                IsTabStop="False"
+                                Padding="{TemplateBinding Padding}"
+                                VerticalScrollBarVisibility="{TemplateBinding ScrollViewer.VerticalScrollBarVisibility}"
+                                VerticalScrollMode="{TemplateBinding ScrollViewer.VerticalScrollMode}"
+                                ZoomMode="Disabled" />
+                            <ContentControl
+                                x:Name="PlaceholderTextContentPresenter"
+                                VerticalAlignment="Center"
+                                Content="{TemplateBinding PlaceholderText}"
+                                Foreground="{StaticResource IrisTextTertiaryBrush}"
+                                IsHitTestVisible="False"
+                                IsTabStop="False"
+                                Padding="{TemplateBinding Padding}" />
+                            <Button
+                                x:Name="DeleteButton"
+                                Grid.Column="1"
+                                AutomationProperties.AccessibilityView="Raw"
+                                IsTabStop="False"
+                                Style="{StaticResource IrisSubtleIconButtonStyle}"
+                                Visibility="Collapsed">
+                                <FontIcon FontSize="{StaticResource IrisIconSmallFontSize}" Glyph="&#xE711;" Style="{StaticResource IrisIconStyle}" />
+                            </Button>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="IrisBarePasswordBoxStyle" TargetType="PasswordBox">
+            <Setter Property="Foreground" Value="{StaticResource IrisTextPrimaryBrush}" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="MinWidth" Value="0" />
+            <Setter Property="FontFamily" Value="{StaticResource IrisSansFontFamily}" />
+            <Setter Property="FontSize" Value="{StaticResource IrisBodyFontSize}" />
+            <Setter Property="SelectionHighlightColor" Value="{StaticResource IrisCoralBrush}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="PasswordBox">
+                        <Grid x:Name="RootGrid" Background="Transparent">
+                            <VisualStateManager.VisualStateGroups>
+                                <VisualStateGroup x:Name="CommonStates">
+                                    <VisualState x:Name="Normal" />
+                                    <VisualState x:Name="PointerOver" />
+                                    <VisualState x:Name="Focused" />
+                                    <VisualState x:Name="Disabled">
+                                        <VisualState.Setters>
+                                            <Setter Target="RootGrid.Opacity" Value="{StaticResource IrisDisabledOpacity}" />
+                                        </VisualState.Setters>
+                                    </VisualState>
+                                </VisualStateGroup>
+                            </VisualStateManager.VisualStateGroups>
+
+                            <ScrollViewer
+                                x:Name="ContentElement"
+                                VerticalAlignment="Center"
+                                AutomationProperties.AccessibilityView="Raw"
+                                HorizontalScrollBarVisibility="Hidden"
+                                HorizontalScrollMode="Auto"
+                                IsTabStop="False"
+                                Padding="{TemplateBinding Padding}"
+                                VerticalScrollBarVisibility="Hidden"
+                                VerticalScrollMode="Disabled"
+                                ZoomMode="Disabled" />
+                            <ContentControl
+                                x:Name="PlaceholderTextContentPresenter"
+                                VerticalAlignment="Center"
+                                Content="{TemplateBinding PlaceholderText}"
+                                Foreground="{StaticResource IrisTextTertiaryBrush}"
+                                IsHitTestVisible="False"
+                                IsTabStop="False"
+                                Padding="{TemplateBinding Padding}" />
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </UserControl.Resources>
 
     <StackPanel Spacing="{StaticResource IrisSpacingXs}">
@@ -53,38 +172,24 @@
                     Foreground="{StaticResource IrisTextTertiaryBrush}"
                     Style="{StaticResource IrisIconStyle}" />
 
-                <!--  The TextBox template ignores VerticalContentAlignment: center the whole control instead of stretching it.  -->
                 <TextBox
                     x:Name="Input"
                     Grid.Column="1"
-                    MinHeight="0"
-                    Padding="0"
-                    VerticalAlignment="Center"
-                    VerticalContentAlignment="Center"
-                    FontFamily="{StaticResource IrisSansFontFamily}"
-                    FontSize="{StaticResource IrisBodyFontSize}"
                     GotFocus="OnInputGotFocus"
                     KeyDown="OnInputKeyDown"
                     LostFocus="OnInputLostFocus"
-                    PlaceholderForeground="{StaticResource IrisTextTertiaryBrush}"
-                    SelectionHighlightColor="{StaticResource IrisCoralBrush}"
+                    Style="{StaticResource IrisBareTextBoxStyle}"
                     TextChanged="OnTextChanged" />
 
                 <PasswordBox
                     x:Name="SecretInput"
                     Grid.Column="1"
-                    MinHeight="0"
-                    Padding="0"
-                    VerticalAlignment="Center"
-                    VerticalContentAlignment="Center"
-                    FontFamily="{StaticResource IrisSansFontFamily}"
-                    FontSize="{StaticResource IrisBodyFontSize}"
                     GotFocus="OnInputGotFocus"
                     KeyDown="OnInputKeyDown"
                     LostFocus="OnInputLostFocus"
                     PasswordChanged="OnPasswordChanged"
                     PasswordRevealMode="Hidden"
-                    SelectionHighlightColor="{StaticResource IrisCoralBrush}"
+                    Style="{StaticResource IrisBarePasswordBoxStyle}"
                     Visibility="Collapsed" />
 
                 <Button

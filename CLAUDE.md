@@ -2,9 +2,15 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Implementation plan
+
+**Start with `docs/plans/README.md`.** It holds the phased plan this repo is being built from (API connection,
+offline sync, real TV output and playback), the shared platform decisions and the API contract
+(`docs/api-contract.md`). Where this file and the plan disagree, the plan wins.
+
 ## Project
 
-Iris is a WinUI 3 desktop app (Windows App SDK 2.5, .NET 8, `net8.0-windows10.0.19041.0`, min OS 10.0.17763) packaged as a single-project MSIX. It is the Windows 11 port of an iPad (SwiftUI) mockup; the authoritative spec is `IRIS_SPEC.md` (kept by the user in `~/Downloads`). All visible text is Spanish; code is English. Unit tests cover the pure logic only (`Tests/`).
+Iris is a WinUI 3 desktop app (Windows App SDK 2.5, .NET 8, `net8.0-windows10.0.19041.0`, min OS 10.0.17763) packaged as a single-project MSIX. It is the Windows 11 port of an iPad (SwiftUI) mockup; the authoritative spec is `docs/IRIS_SPEC.md`. All visible text is Spanish; code is English. Unit tests cover the pure logic only (`Tests/`).
 
 ## Purpose
 
@@ -17,9 +23,9 @@ Church projection console: a control PC drives a TV/projector (second monitor) t
 - **No NavigationView**: the app is two screens (access ↔ live console) switched by `SessionStore`; secondary flows are in-window sheets (`IrisModal`) and flyouts.
 - **All UI is hand-written XAML** (or code-built visuals inside `DesignSystem/Controls` and `ProjectionCanvas`) — no designer output.
 - **After every change, run `dotnet build Iris.csproj -p:Platform=x64` and fix all errors before finishing.**
-- Data goes through `Core/Services` interfaces with `Mock*` implementations wired in `Shell/AppDependencies.Mock()`. No real API, auth, persistence or audio yet; playback time is simulated by the console.
+- Data goes through `Core/Services` interfaces. `Mock*` implementations (wired in `Shell/AppDependencies.Mock()`) stay for design work and tests; `Live*` implementations talk to the API through `Core/Networking`, a local SQLite copy and an outbox (see `docs/plans`). In development the API is the in-app fake (`DataMode.Fake`).
 - Placeholder texts are public-domain hymns (19th-century translations) and RVR1909, or invented — never copyrighted lyrics.
-- Propose structure/screens and wait for approval before writing code for features not covered by the spec.
+- Features covered by `docs/plans` are approved; anything not covered by the spec or the plans needs approval first.
 
 ## Architecture
 
