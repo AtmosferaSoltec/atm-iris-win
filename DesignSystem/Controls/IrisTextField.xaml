@@ -53,12 +53,13 @@
                     Foreground="{StaticResource IrisTextTertiaryBrush}"
                     Style="{StaticResource IrisIconStyle}" />
 
+                <!--  The TextBox template ignores VerticalContentAlignment: center the whole control instead of stretching it.  -->
                 <TextBox
                     x:Name="Input"
                     Grid.Column="1"
                     MinHeight="0"
                     Padding="0"
-                    VerticalAlignment="Stretch"
+                    VerticalAlignment="Center"
                     VerticalContentAlignment="Center"
                     FontFamily="{StaticResource IrisSansFontFamily}"
                     FontSize="{StaticResource IrisBodyFontSize}"
@@ -74,7 +75,7 @@
                     Grid.Column="1"
                     MinHeight="0"
                     Padding="0"
-                    VerticalAlignment="Stretch"
+                    VerticalAlignment="Center"
                     VerticalContentAlignment="Center"
                     FontFamily="{StaticResource IrisSansFontFamily}"
                     FontSize="{StaticResource IrisBodyFontSize}"
