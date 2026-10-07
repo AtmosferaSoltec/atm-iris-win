@@ -98,8 +98,14 @@ public sealed partial class LiveConsoleViewModel : ObservableObject
         _people = people;
         _records = records;
         _navigator = navigator;
+        Countdown = new CountdownViewModel(Changed);
         Items.CollectionChanged += (_, _) => Renumber();
     }
+
+    // ===== Temporizador =====
+
+    /// <summary>The toolbar countdown; it takes the TV while it counts (see <see cref="LiveFrame"/>).</summary>
+    public CountdownViewModel Countdown { get; }
 
     // ===== Top bar =====
 
@@ -217,12 +223,17 @@ public sealed partial class LiveConsoleViewModel : ObservableObject
 
     public bool HasPlayback => Playback is not null;
 
-    /// <summary>What the TV shows (§7.3): background only when cleared or nothing is live.</summary>
+    /// <summary>What the TV shows (§7.3): background only when cleared or nothing is live; the countdown over the slide.</summary>
     public ProjectionFrame LiveFrame
     {
         get
         {
             var background = Backgrounds.FirstOrDefault(b => b.Model.Id == SelectedBackgroundId)?.Model;
+            if (!IsScreenCleared && Countdown.TvContent is { } timer)
+            {
+                return new ProjectionFrame(background, timer);
+            }
+
             if (IsScreenCleared || Live is null || FindItem(Live.ItemId) is not { } item || Live.SlideIndex >= item.Slides.Count)
             {
                 return new ProjectionFrame(background, ProjectionContent.Blank);
@@ -417,6 +428,7 @@ public sealed partial class LiveConsoleViewModel : ObservableObject
         _lifetime.Cancel();
         _undoTimer?.Cancel();
         BlockTimer?.Stop();
+        Countdown.Dispose();
         if (Playback is not null)
         {
             _player.Stop();

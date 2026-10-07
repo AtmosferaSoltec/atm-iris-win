@@ -34,18 +34,19 @@ public sealed class LiveLibraryRepository(LiveData data, IMediaCache cache) : IL
     public Task DownloadAsync(IEnumerable<Guid> ids) => cache.RequestAsync(ids);
 }
 
-/// <summary>The six built-in gradients plus the church's pictures marked as backgrounds that are already on this PC.</summary>
+/// <summary>The six built-in gradients plus the church's pictures and videos marked as backgrounds that are already on this PC.</summary>
 public sealed class LiveBackgroundRepository(LiveData data, IMediaCache cache) : IBackgroundRepository
 {
     public async Task<IReadOnlyList<ProjectionBackground>> BackgroundsAsync()
     {
         var list = new List<ProjectionBackground>(BuiltInBackgrounds.All);
-        foreach (var media in (await data.Store.GetMediaAsync()).Where(m => m.Kind == "image" && m.IsBackground).OrderByDescending(m => m.CreatedAt))
+        foreach (var media in (await data.Store.GetMediaAsync()).Where(m => m.Kind is "image" or "video" && m.IsBackground).OrderByDescending(m => m.CreatedAt))
         {
             var state = cache.StateOf(media);
             if (state.Availability == MediaAvailability.Ready && state.Path is { } path)
             {
-                list.Add(new ProjectionBackground($"media-{media.Id}", media.Title, ["#15151F", "#07070B"], false, path));
+                var isVideo = media.Kind == "video";
+                list.Add(new ProjectionBackground($"media-{media.Id}", media.Title, ["#15151F", "#07070B"], isVideo, isVideo ? null : path, isVideo ? path : null));
             }
         }
 

@@ -47,6 +47,16 @@
             </StackPanel>
         </DataTemplate>
 
+        <DataTemplate x:Key="CountdownPresetTemplate" x:DataType="console:CountdownPresetViewModel">
+            <Button
+                HorizontalAlignment="Stretch"
+                AutomationProperties.Name="{x:Bind Label}"
+                Command="{x:Bind Owner.StartCommand}"
+                CommandParameter="{x:Bind Minutes}"
+                Content="{x:Bind Label}"
+                Style="{StaticResource IrisPillButtonStyle}" />
+        </DataTemplate>
+
         <DataTemplate x:Key="BackgroundSwatchTemplate" x:DataType="console:BackgroundOptionViewModel">
             <Button
                 Width="{StaticResource IrisSwatchCellWidth}"
@@ -66,6 +76,13 @@
                             BorderBrush="{StaticResource IrisStrokeBrush}"
                             BorderThickness="{StaticResource IrisHairline}"
                             CornerRadius="{StaticResource IrisRadiusSwatch}" />
+                        <FontIcon
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            FontSize="{StaticResource IrisCaptionFontSize}"
+                            Glyph="&#xE768;"
+                            Style="{StaticResource IrisIconStyle}"
+                            Visibility="{x:Bind IsVideo}" />
                         <Border
                             BorderBrush="{StaticResource IrisSelectionRingBrush}"
                             BorderThickness="{StaticResource IrisSelectionRingStroke}"
@@ -169,6 +186,93 @@
                                             MinRowSpacing="12" />
                                     </ItemsRepeater.Layout>
                                 </ItemsRepeater>
+                            </StackPanel>
+                        </Flyout>
+                    </Button.Flyout>
+                </Button>
+
+                <!--  Temporizador: a countdown that takes the TV while it counts (sermon, games…).  -->
+                <Button
+                    AutomationProperties.Name="Temporizador"
+                    Style="{StaticResource IrisPillButtonStyle}"
+                    ToolTipService.ToolTip="Temporizador">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <FontIcon
+                            FontSize="{StaticResource IrisCaptionFontSize}"
+                            Glyph="&#xE916;"
+                            Style="{StaticResource IrisIconStyle}" />
+                        <TextBlock Text="{x:Bind ViewModel.Countdown.ButtonText, Mode=OneWay}" />
+                    </StackPanel>
+                    <Button.Flyout>
+                        <Flyout FlyoutPresenterStyle="{StaticResource IrisFlyoutPresenterStyle}" Placement="BottomEdgeAlignedLeft">
+                            <StackPanel Width="316" Spacing="{StaticResource IrisSpacingSm}">
+                                <controls:IrisSectionHeader Title="Temporizador" />
+
+                                <!--  Idle: pick a duration.  -->
+                                <StackPanel Spacing="{StaticResource IrisSpacingSm}" Visibility="{x:Bind ViewModel.Countdown.IsIdle, Mode=OneWay}">
+                                    <ItemsRepeater ItemTemplate="{StaticResource CountdownPresetTemplate}" ItemsSource="{x:Bind ViewModel.Countdown.Presets}">
+                                        <ItemsRepeater.Layout>
+                                            <UniformGridLayout
+                                                MinColumnSpacing="8"
+                                                MinItemWidth="{StaticResource IrisSwatchCellWidth}"
+                                                MinRowSpacing="8" />
+                                        </ItemsRepeater.Layout>
+                                    </ItemsRepeater>
+                                    <Grid ColumnSpacing="8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <NumberBox
+                                            AutomationProperties.Name="Minutos"
+                                            Header="Otro tiempo (minutos)"
+                                            Maximum="600"
+                                            Minimum="1"
+                                            SpinButtonPlacementMode="Compact"
+                                            Value="{x:Bind ViewModel.Countdown.CustomMinutes, Mode=TwoWay}" />
+                                        <Button
+                                            Grid.Column="1"
+                                            VerticalAlignment="Bottom"
+                                            Command="{x:Bind ViewModel.Countdown.StartCustomCommand}"
+                                            Content="Iniciar"
+                                            Style="{StaticResource IrisPrimaryButtonStyle}" />
+                                    </Grid>
+                                </StackPanel>
+
+                                <!--  Counting, paused or finished.  -->
+                                <StackPanel Spacing="{StaticResource IrisSpacingSm}" Visibility="{x:Bind ViewModel.Countdown.IsActive, Mode=OneWay}">
+                                    <TextBlock
+                                        HorizontalAlignment="Center"
+                                        Style="{StaticResource IrisCaptionTextStyle}"
+                                        Text="{x:Bind ViewModel.Countdown.StatusText, Mode=OneWay}" />
+                                    <TextBlock
+                                        HorizontalAlignment="Center"
+                                        Style="{StaticResource IrisTimerClockTextStyle}"
+                                        Text="{x:Bind ViewModel.Countdown.RemainingText, Mode=OneWay}" />
+                                    <StackPanel
+                                        HorizontalAlignment="Center"
+                                        Orientation="Horizontal"
+                                        Spacing="8">
+                                        <Button
+                                            Command="{x:Bind ViewModel.Countdown.TogglePauseCommand}"
+                                            Content="{x:Bind ViewModel.Countdown.PauseButtonText, Mode=OneWay}"
+                                            IsEnabled="{x:Bind ViewModel.Countdown.CanPause, Mode=OneWay}"
+                                            Style="{StaticResource IrisPillButtonStyle}" />
+                                        <Button
+                                            Command="{x:Bind ViewModel.Countdown.AddMinuteCommand}"
+                                            Content="+1 min"
+                                            Style="{StaticResource IrisPillButtonStyle}" />
+                                        <Button
+                                            Command="{x:Bind ViewModel.Countdown.StopCommand}"
+                                            Content="Detener"
+                                            Style="{StaticResource IrisDangerButtonStyle}" />
+                                    </StackPanel>
+                                    <Button
+                                        HorizontalAlignment="Center"
+                                        Command="{x:Bind ViewModel.Countdown.ToggleTvCommand}"
+                                        Content="{x:Bind ViewModel.Countdown.TvButtonText, Mode=OneWay}"
+                                        Style="{StaticResource IrisLinkButtonStyle}" />
+                                </StackPanel>
                             </StackPanel>
                         </Flyout>
                     </Button.Flyout>

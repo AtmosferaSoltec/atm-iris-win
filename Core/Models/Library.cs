@@ -59,7 +59,7 @@ public sealed record MediaAsset(Guid Id, MediaKind Kind, string Title, string Su
 
     public int? Height { get; init; }
 
-    /// <summary>Images only: offered in the background picker.</summary>
+    /// <summary>Images and videos: offered in the background picker.</summary>
     public bool IsBackground { get; init; }
 
     /// <summary>The file is on this PC (or it is design data): it can play or go to the TV. Music and videos can be

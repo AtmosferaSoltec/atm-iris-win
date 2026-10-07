@@ -68,11 +68,19 @@ public sealed partial class ProjectionCanvas : UserControl
             }
         }));
 
+    // The video background lives apart from the content layers, so changing slides never restarts its loop.
     private readonly Grid _stage = new() { Width = W, Height = H };
+    private readonly Grid _videoHost = new() { Width = W, Height = H };
+    private readonly Grid _layers = new() { Width = W, Height = H };
+    private Windows.Media.Playback.MediaPlayer? _backgroundPlayer;
+    private string? _videoPath;
+    private TextBlock? _timerText;
 
     public ProjectionCanvas()
     {
         IsTabStop = false;
+        _stage.Children.Add(_videoHost);
+        _stage.Children.Add(_layers);
         Content = new Grid
         {
             Background = IrisTheme.Brush("IrisBlackBrush"),
@@ -82,8 +90,17 @@ public sealed partial class ProjectionCanvas : UserControl
         {
             ProjectionTypography.Changed -= OnTypographyChanged;
             ProjectionTypography.Changed += OnTypographyChanged;
+            // Unloading removed the video player; a canvas that comes back brings it back.
+            if (DecodePixelWidth <= 0 && Frame?.Background?.VideoPath is not null && _videoPath is null)
+            {
+                Rerender();
+            }
         };
-        Unloaded += (_, _) => ProjectionTypography.Changed -= OnTypographyChanged;
+        Unloaded += (_, _) =>
+        {
+            ProjectionTypography.Changed -= OnTypographyChanged;
+            SetVideoBackground(null);
+        };
     }
 
     public ProjectionSettings? Typography
@@ -105,9 +122,9 @@ public sealed partial class ProjectionCanvas : UserControl
     /// <summary>Draws the same frame again (the typography changed, not the frame).</summary>
     private void Rerender()
     {
-        if (Frame is not null && _stage.Children.Count > 0)
+        if (Frame is not null && _layers.Children.Count > 0)
         {
-            _stage.Children.Clear();
+            _layers.Children.Clear();
             Render(null);
         }
     }
@@ -160,13 +177,23 @@ public sealed partial class ProjectionCanvas : UserControl
     private void Render(ProjectionFrame? previous)
     {
         var frame = Frame ?? ProjectionFrame.Black;
-        if (Equals(previous, frame) && _stage.Children.Count > 0)
+        if (Equals(previous, frame) && _layers.Children.Count > 0)
         {
+            return;
+        }
+
+        // The countdown ticks every second: only its digits change, so update them in place (no rebuild, no cross-fade).
+        if (previous is { Content: TimerContent } && frame.Content is TimerContent tick && Equals(previous.Background, frame.Background) && _timerText is not null && _layers.Children.Count > 0)
+        {
+            _timerText.Text = tick.Text;
+            _timerText.Foreground = TimerBrush(tick);
+            AutomationProperties.SetName(this, tick.Text);
             return;
         }
 
         AutomationProperties.SetName(this, frame.Content switch
         {
+            TimerContent timer => timer.Text,
             TextContent text => text.Body,
             ImageContent image => image.Title,
             VideoContent video => video.Title,
@@ -175,39 +202,54 @@ public sealed partial class ProjectionCanvas : UserControl
             _ => "Pantalla vacía",
         });
 
-        var layer = BuildLayer(frame);
-        var animate = UsesTransitions && IsLoaded && Motion.AnimationsEnabled && _stage.Children.Count > 0;
+        // A video background plays for real on the TV and the previews; thumbnails show its first frame.
+        var videoPath = DecodePixelWidth <= 0 && frame.Background?.VideoPath is { } clip && System.IO.File.Exists(clip) ? clip : null;
+        SetVideoBackground(videoPath);
+        _timerText = null;
+        var layer = BuildLayer(frame, videoPath is not null);
+        var animate = UsesTransitions && IsLoaded && Motion.AnimationsEnabled && _layers.Children.Count > 0;
 
         // Keep the background still when only the content changes, so the cross-fade only touches the text.
         if (!animate)
         {
-            _stage.Children.Clear();
-            _stage.Children.Add(layer);
+            _layers.Children.Clear();
+            _layers.Children.Add(layer);
             return;
         }
 
-        var outgoing = _stage.Children.ToList();
+        var outgoing = _layers.Children.ToList();
         layer.Opacity = 0;
-        _stage.Children.Add(layer);
+        _layers.Children.Add(layer);
         Motion.Fade(layer, 1, Motion.Smooth, () =>
         {
             foreach (var old in outgoing)
             {
-                _stage.Children.Remove(old);
+                _layers.Children.Remove(old);
             }
         });
     }
 
-    private Grid BuildLayer(ProjectionFrame frame)
+    private Grid BuildLayer(ProjectionFrame frame, bool hasVideoBackground)
     {
-        var layer = new Grid { Width = W, Height = H, Background = IrisTheme.Brush("IrisBlackBrush") };
+        // With a video background the layer is see-through: the player sits underneath, in _videoHost.
+        var layer = new Grid { Width = W, Height = H, Background = hasVideoBackground ? null : IrisTheme.Brush("IrisBlackBrush") };
 
         if (frame.Background is { } background)
         {
-            layer.Children.Add(new Rectangle { Fill = IrisTheme.DiagonalGradient(background.Colors) });
+            if (!hasVideoBackground)
+            {
+                layer.Children.Add(new Rectangle { Fill = IrisTheme.DiagonalGradient(background.Colors) });
+            }
+
             if (background.ImagePath is { } picture && MediaImage(picture, Stretch.UniformToFill) is { } backdrop)
             {
                 layer.Children.Add(backdrop);
+            }
+            else if (background.VideoPath is { } clip && !hasVideoBackground)
+            {
+                var still = new Image { Stretch = Stretch.UniformToFill };
+                layer.Children.Add(still);
+                _ = LoadVideoThumbnailAsync(still, clip);
             }
 
             layer.Children.Add(new Rectangle { Fill = IrisTheme.Glow(Color.FromArgb(0xFF, 0xFF, 0xFF, 0xFF), 0.14, new Point(0.5, 0), 0.9, 0.7) });
@@ -216,6 +258,7 @@ public sealed partial class ProjectionCanvas : UserControl
 
         var content = frame.Content switch
         {
+            TimerContent timer => BuildTimer(timer),
             TextContent text => BuildText(text, EffectiveTypography),
             ImageContent image => BuildImage(image),
             VideoContent video => BuildVideo(video),
@@ -230,6 +273,60 @@ public sealed partial class ProjectionCanvas : UserControl
         }
 
         return layer;
+    }
+
+    private static Brush TimerBrush(TimerContent timer) => IrisTheme.Brush(timer.IsFinished ? "IrisDangerBrush" : "IrisTextPrimaryBrush");
+
+    // Temporizador: the digits fill the stage's middle, in the display face with fixed-width numerals so they do not jitter.
+    private UIElement BuildTimer(TimerContent timer)
+    {
+        var digits = new TextBlock
+        {
+            Text = timer.Text,
+            FontFamily = (FontFamily)Application.Current.Resources["IrisSerifDisplayFontFamily"],
+            FontWeight = FontWeights.SemiBold,
+            FontSize = W * (timer.Text.Length > 5 ? 0.18 : 0.26),
+            TextAlignment = TextAlignment.Center,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            Foreground = TimerBrush(timer),
+        };
+        Microsoft.UI.Xaml.Documents.Typography.SetNumeralAlignment(digits, FontNumeralAlignment.Tabular);
+        _timerText = digits;
+        return new Grid { Children = { digits } };
+    }
+
+    /// <summary>Plays <paramref name="path"/> silently in a loop under the content, or removes the player when null.</summary>
+    private void SetVideoBackground(string? path)
+    {
+        if (path == _videoPath)
+        {
+            return;
+        }
+
+        _videoPath = path;
+        _videoHost.Children.Clear();
+        _backgroundPlayer?.Dispose();
+        _backgroundPlayer = null;
+        if (path is null)
+        {
+            return;
+        }
+
+        var player = new Windows.Media.Playback.MediaPlayer
+        {
+            AutoPlay = true,
+            IsMuted = true,
+            IsLoopingEnabled = true,
+            Source = Windows.Media.Core.MediaSource.CreateFromUri(new Uri(path)),
+        };
+
+        // A silent backdrop must not take the system media controls or media keys from the real player.
+        player.CommandManager.IsEnabled = false;
+        _backgroundPlayer = player;
+        var element = new MediaPlayerElement { AreTransportControlsEnabled = false, Stretch = Stretch.UniformToFill };
+        element.SetMediaPlayer(player);
+        _videoHost.Children.Add(element);
     }
 
     // Letra / versículo (api-contract §6): the church's typeface at its size (points on a 1920-wide screen, scaled to

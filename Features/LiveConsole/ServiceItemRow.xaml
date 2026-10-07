@@ -86,14 +86,14 @@
                 Visibility="Collapsed" />
             <Rectangle
                 Width="{StaticResource IrisSelectionBarWidth}"
-                Margin="0,10"
+                Margin="0,6"
                 HorizontalAlignment="Left"
                 Fill="{StaticResource IrisAccentGradientBrush}"
                 RadiusX="1.5"
                 RadiusY="1.5"
                 Visibility="{x:Bind Item.IsSelected, Mode=OneWay}" />
 
-            <Grid Padding="{StaticResource IrisRowPadding}" ColumnSpacing="{StaticResource IrisSpacingSm}">
+            <Grid Padding="{StaticResource IrisCompactRowPadding}" ColumnSpacing="{StaticResource IrisSpacingSm}">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
@@ -106,48 +106,38 @@
                     Style="{StaticResource IrisNumberTextStyle}"
                     Text="{x:Bind Item.Number, Mode=OneWay}" />
 
-                <Grid
+                <FontIcon
                     Grid.Column="1"
-                    Width="{StaticResource IrisRowIconSize}"
-                    Height="{StaticResource IrisRowIconSize}"
-                    Background="{x:Bind design:KindStyle.TintBrush(Item.Kind), Mode=OneWay}"
-                    CornerRadius="{StaticResource IrisRadiusSm}">
-                    <FontIcon
-                        Foreground="{x:Bind design:KindStyle.Brush(Item.Kind), Mode=OneWay}"
-                        Glyph="{x:Bind design:KindStyle.Glyph(Item.Kind), Mode=OneWay}"
-                        Style="{StaticResource IrisIconStyle}" />
-                </Grid>
+                    Width="{StaticResource IrisListIconWidth}"
+                    VerticalAlignment="Center"
+                    Foreground="{x:Bind design:KindStyle.Brush(Item.Kind), Mode=OneWay}"
+                    Glyph="{x:Bind design:KindStyle.Glyph(Item.Kind), Mode=OneWay}"
+                    Style="{StaticResource IrisIconStyle}" />
 
-                <StackPanel
+                <TextBlock
                     Grid.Column="2"
                     VerticalAlignment="Center"
-                    Spacing="2">
-                    <TextBlock
-                        MaxLines="1"
-                        Style="{StaticResource IrisCalloutEmphasizedTextStyle}"
-                        Text="{x:Bind Item.Title, Mode=OneWay}"
-                        TextTrimming="CharacterEllipsis"
-                        TextWrapping="NoWrap" />
-                    <TextBlock
-                        MaxLines="1"
-                        Style="{StaticResource IrisCaptionTextStyle}"
-                        Text="{x:Bind Item.Subtitle, Mode=OneWay}"
-                        TextTrimming="CharacterEllipsis"
-                        TextWrapping="NoWrap" />
-                </StackPanel>
+                    MaxLines="1"
+                    Style="{StaticResource IrisCalloutTextStyle}"
+                    TextTrimming="CharacterEllipsis"
+                    TextWrapping="NoWrap">
+                    <Run FontWeight="SemiBold" Foreground="{StaticResource IrisTextPrimaryBrush}" Text="{x:Bind Item.Title, Mode=OneWay}" />
+                    <Run Foreground="{StaticResource IrisTextTertiaryBrush}" Text="{x:Bind Item.Subtitle, Mode=OneWay}" />
+                </TextBlock>
 
                 <Button
                     x:Name="TrashButton"
                     Grid.Column="3"
-                    Width="32"
-                    Height="32"
+                    Width="{StaticResource IrisCompactButtonSize}"
+                    Height="{StaticResource IrisCompactButtonSize}"
+                    VerticalAlignment="Center"
                     AutomationProperties.Name="Eliminar"
                     Command="{x:Bind Item.Owner.RemoveItemCommand, Mode=OneWay}"
                     CommandParameter="{x:Bind Item, Mode=OneWay}"
                     Style="{StaticResource IrisSubtleIconButtonStyle}"
                     ToolTipService.ToolTip="Eliminar"
                     Visibility="Collapsed">
-                    <FontIcon Glyph="&#xE74D;" Style="{StaticResource IrisIconStyle}" />
+                    <FontIcon FontSize="{StaticResource IrisCaptionFontSize}" Glyph="&#xE74D;" Style="{StaticResource IrisIconStyle}" />
                 </Button>
             </Grid>
         </Grid>

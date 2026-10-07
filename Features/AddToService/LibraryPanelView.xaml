@@ -10,36 +10,30 @@
     xmlns:projection="using:Iris.Shared.Projection">
 
     <UserControl.Resources>
+        <!--  A flat one-line row (no card): icon or thumbnail, title with the author dimmed beside it, duration, "+"  -->
         <DataTemplate x:Key="EntryTemplate" x:DataType="add:LibraryEntryViewModel">
             <Grid
-                Padding="{StaticResource IrisPaddingSm}"
-                Background="{StaticResource IrisSurfaceBrush}"
-                BorderBrush="{StaticResource IrisStrokeBrush}"
-                BorderThickness="{StaticResource IrisHairline}"
+                Padding="{StaticResource IrisCompactRowPadding}"
+                Background="Transparent"
                 ColumnSpacing="{StaticResource IrisSpacingSm}"
-                CornerRadius="{StaticResource IrisRadiusMd}"
                 ToolTipService.ToolTip="Arrástralo al servicio, o haz doble clic para agregarlo">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
                 <!--  Lyrics and music: the kind's icon  -->
-                <Grid
-                    Width="{StaticResource IrisRowIconSize}"
-                    Height="{StaticResource IrisRowIconSize}"
+                <FontIcon
+                    Width="{StaticResource IrisListIconWidth}"
                     VerticalAlignment="Center"
-                    Background="{x:Bind design:KindStyle.TintBrush(Kind)}"
-                    CornerRadius="{StaticResource IrisRadiusSm}"
-                    Visibility="{x:Bind ShowsIcon}">
-                    <FontIcon
-                        Foreground="{x:Bind design:KindStyle.Brush(Kind)}"
-                        Glyph="{x:Bind design:KindStyle.Glyph(Kind)}"
-                        Style="{StaticResource IrisIconStyle}" />
-                </Grid>
+                    Foreground="{x:Bind design:KindStyle.Brush(Kind)}"
+                    Glyph="{x:Bind design:KindStyle.Glyph(Kind)}"
+                    Style="{StaticResource IrisIconStyle}"
+                    Visibility="{x:Bind ShowsIcon}" />
 
-                <!--  Images and videos: the picture; not on this PC yet → progress over it  -->
+                <!--  Images and videos: a small picture; not on this PC yet → progress over it  -->
                 <Grid
                     Width="{StaticResource IrisLibraryThumbWidth}"
                     VerticalAlignment="Center"
@@ -53,58 +47,52 @@
                             Maximum="100"
                             Value="{x:Bind ProgressPercent, Mode=OneWay}" />
                     </Grid>
-                    <Grid
-                        Width="{StaticResource IrisPlayBadgeSize}"
-                        Height="{StaticResource IrisPlayBadgeSize}"
-                        Visibility="{x:Bind IsVideo}">
-                        <Ellipse Fill="{StaticResource IrisScrimBrush}" Stroke="{StaticResource IrisStrokeStrongBrush}" />
-                        <FontIcon
-                            FontSize="{StaticResource IrisCaptionFontSize}"
-                            Glyph="&#xE768;"
-                            Style="{StaticResource IrisIconStyle}" />
-                    </Grid>
+                    <FontIcon
+                        FontSize="{StaticResource IrisCaptionFontSize}"
+                        Glyph="&#xE768;"
+                        Style="{StaticResource IrisIconStyle}"
+                        Visibility="{x:Bind IsVideo}" />
                     <Border
                         BorderBrush="{StaticResource IrisStrokeBrush}"
                         BorderThickness="{StaticResource IrisHairline}"
                         CornerRadius="{StaticResource IrisRadiusSm}" />
                 </Grid>
 
-                <StackPanel
+                <TextBlock
                     Grid.Column="1"
                     VerticalAlignment="Center"
-                    Spacing="2">
-                    <TextBlock
-                        MaxLines="1"
-                        Style="{StaticResource IrisCalloutEmphasizedTextStyle}"
-                        Text="{x:Bind Title}"
-                        TextTrimming="CharacterEllipsis" />
-                    <TextBlock
-                        MaxLines="1"
-                        Style="{StaticResource IrisCaptionTextStyle}"
-                        Text="{x:Bind Subtitle}"
-                        TextTrimming="CharacterEllipsis" />
-                    <TextBlock
-                        Style="{StaticResource IrisCaptionTextStyle}"
-                        Text="{x:Bind StatusText, Mode=OneWay}"
-                        Visibility="{x:Bind IsUnavailable, Mode=OneWay}" />
-                    <TextBlock
-                        MaxLines="1"
-                        Style="{StaticResource IrisCaptionTextStyle}"
-                        Text="{x:Bind Duration}"
-                        Visibility="{x:Bind HasDuration}" />
-                </StackPanel>
+                    MaxLines="1"
+                    Style="{StaticResource IrisCalloutTextStyle}"
+                    TextTrimming="CharacterEllipsis"
+                    TextWrapping="NoWrap">
+                    <Run FontWeight="SemiBold" Foreground="{StaticResource IrisTextPrimaryBrush}" Text="{x:Bind Title}" />
+                    <Run Foreground="{StaticResource IrisTextTertiaryBrush}" Text="{x:Bind Subtitle}" />
+                </TextBlock>
+
+                <TextBlock
+                    Grid.Column="2"
+                    VerticalAlignment="Center"
+                    Style="{StaticResource IrisNumberTextStyle}"
+                    Text="{x:Bind StatusText, Mode=OneWay}"
+                    Visibility="{x:Bind IsUnavailable, Mode=OneWay}" />
+                <TextBlock
+                    Grid.Column="2"
+                    VerticalAlignment="Center"
+                    Style="{StaticResource IrisNumberTextStyle}"
+                    Text="{x:Bind Duration}"
+                    Visibility="{x:Bind IsAvailable, Mode=OneWay}" />
 
                 <Button
-                    Grid.Column="2"
-                    Width="{StaticResource IrisControlHeight}"
-                    Height="{StaticResource IrisControlHeight}"
+                    Grid.Column="3"
+                    Width="{StaticResource IrisCompactButtonSize}"
+                    Height="{StaticResource IrisCompactButtonSize}"
                     VerticalAlignment="Center"
                     AutomationProperties.Name="{x:Bind Title}"
                     Command="{x:Bind Owner.AddCommand}"
                     CommandParameter="{x:Bind}"
                     Style="{StaticResource IrisSubtleIconButtonStyle}"
                     ToolTipService.ToolTip="Agregar al servicio">
-                    <FontIcon Glyph="&#xE710;" Style="{StaticResource IrisIconStyle}" />
+                    <FontIcon FontSize="{StaticResource IrisCaptionFontSize}" Glyph="&#xE710;" Style="{StaticResource IrisIconStyle}" />
                 </Button>
             </Grid>
         </DataTemplate>
@@ -157,10 +145,6 @@
                 ItemTemplate="{StaticResource EntryTemplate}"
                 ItemsSource="{x:Bind ViewModel.Entries, Mode=OneWay}"
                 SelectionMode="None">
-                <ListView.Resources>
-                    <SolidColorBrush x:Key="ListViewItemBackgroundPointerOver" Color="Transparent" />
-                    <SolidColorBrush x:Key="ListViewItemBackgroundPressed" Color="Transparent" />
-                </ListView.Resources>
             </ListView>
 
             <StackPanel

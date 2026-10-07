@@ -23,8 +23,14 @@ public sealed record AudioContent(string Title, TimeSpan Duration, string? Local
 
 public sealed record LogoContent(string Name) : ProjectionContent;
 
-/// <summary>A gradient, or a picture of the church ("ImagePath", drawn UniformToFill under the 20 % veil) over a gradient fallback.</summary>
-public sealed record ProjectionBackground(string Id, string Name, IReadOnlyList<string> Colors, bool IsAnimated, string? ImagePath = null);
+/// <summary>The countdown on the TV: big digits over the background. <paramref name="IsFinished"/> turns them red.</summary>
+public sealed record TimerContent(string Text, bool IsFinished = false) : ProjectionContent;
+
+/// <summary>
+/// A gradient, or a picture of the church ("ImagePath", drawn UniformToFill under the 20 % veil) over a gradient fallback,
+/// or a short video ("VideoPath") that loops silently behind the content.
+/// </summary>
+public sealed record ProjectionBackground(string Id, string Name, IReadOnlyList<string> Colors, bool IsAnimated, string? ImagePath = null, string? VideoPath = null);
 
 /// <summary>A full TV frame. A null <see cref="Background"/> means plain black.</summary>
 public sealed record ProjectionFrame(ProjectionBackground? Background, ProjectionContent Content)

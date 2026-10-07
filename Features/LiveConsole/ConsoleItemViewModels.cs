@@ -73,6 +73,9 @@ public sealed partial class BackgroundOptionViewModel(ProjectionBackground model
 
     public string Name => Model.Name;
 
+    /// <summary>A looping video background: its swatch carries a play mark.</summary>
+    public bool IsVideo => Model.VideoPath is not null;
+
     [ObservableProperty]
     public partial bool IsSelected { get; set; }
 }
