@@ -28,7 +28,7 @@
 
 - **En cada fase**: `dotnet build Iris.csproj -p:Platform=x64` sin errores ni advertencias nuevas, y abrir la app
   (perfil *Iris (Package)* o la copia sin empaquetar de `CLAUDE.md`) para mirar lo que cambiaste en modo **Fake**.
-- **Pruebas** (xUnit en `Tests/`): solo en la fase 10.
+- **Pruebas** (xUnit en `Tests/`): `dotnet test Tests/Iris.Tests.csproj`; las de `LiveApiTests` contra el servidor real son opcionales (ver `README.md`).
 
 ## Fases
 
@@ -37,14 +37,14 @@
 | 00 | [Fundamentos](00-fundamentos/README.md): modos de datos, cliente HTTP, DTO con JSON generado, API falsa, limpieza | [x] |
 | 01 | [Login](01-login/README.md): acceso real, sesión permanente, recuperación en 3 pasos | [x] |
 | 02 | [Sincronización](02-sincronizacion/README.md): copia local SQLite, feed de cambios, cola de escrituras, conexión | [x] |
-| 03 | [Cuenta y permisos](03-cuenta-y-permisos/README.md): cambio de iglesia, cerrar sesión, permisos en cada pantalla | [x] |
+| 03 | [Cuenta y permisos](03-cuenta-y-permisos/README.md): cambio de iglesia, cerrar sesión, permisos en cada pantalla | [x] **reemplazada por el contrato v1 (fase 11)**: ya no hay roles ni cambio de iglesia |
 | 04 | [Iglesia](04-iglesia/README.md): módulos, personas y tipos de servicio sobre la copia local | [x] |
 | 05 | [Canciones](05-canciones/README.md): biblioteca de letras real | [x] |
 | 06 | [Multimedia](06-multimedia/README.md): caché de archivos, fondos personalizados, biblioteca real | [x] |
 | 07 | [Biblia](07-biblia/README.md): RVR1909 completa sin conexión | [x] |
 | 08 | [Tiempos](08-tiempos/README.md): guardar, ajustar y consultar registros | [x] |
 | 09 | [TV y reproducción](09-tv-y-reproduccion/README.md): segundo monitor en caliente, audio y video reales | [~] programada; falta probar con dos monitores (lista en la fase 11) |
-| 10 | [Calidad y entrega](10-calidad-y-entrega/README.md): pruebas, limpieza, documentación, reporte | [ ] |
+| 10 | [Calidad y entrega](10-calidad-y-entrega/README.md): pruebas, limpieza, documentación, reporte | [x] verificada contra el servidor real (2026-10-07); falta solo la revisión visual |
 | 11 | [Paridad con el iPad y escritorio](11-paridad-ipad-y-escritorio/README.md): contrato al día (una cuenta, módulos del sistema, Proyección, música en la nube), barra de herramientas y consola en tres columnas | [~] programada en la Mac; **verificar en Windows con su lista** |
 
 Marca cada casilla al terminar la fase y completa su sección *Desviaciones*.

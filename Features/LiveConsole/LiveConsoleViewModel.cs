@@ -128,8 +128,8 @@ public sealed partial class LiveConsoleViewModel : ObservableObject
     public bool ShowsMultimedia => Modules.Multimedia;
 
     public string EmptyServiceHint => ShowsMultimedia
-        ? "Haz clic en Agregar para sumar letras, música, imágenes o videos."
-        : "Haz clic en Agregar para sumar letras.";
+        ? "Arrastra aquí letras, música, imágenes o videos desde la biblioteca."
+        : "Arrastra aquí letras desde la biblioteca.";
 
     // ===== Block timer (§6.9) =====
 
@@ -171,6 +171,7 @@ public sealed partial class LiveConsoleViewModel : ObservableObject
         OnPropertyChanged(nameof(ShowsBible));
         OnPropertyChanged(nameof(ShowsMultimedia));
         OnPropertyChanged(nameof(EmptyServiceHint));
+        OpenLibrary();
     }
 
     // ===== Service list =====
@@ -234,34 +235,6 @@ public sealed partial class LiveConsoleViewModel : ObservableObject
     /// <summary>Toolbar: "Fondo · Aurora", or "Fondo · Negro" with none.</summary>
     public string BackgroundButtonText =>
         $"Fondo · {Backgrounds.FirstOrDefault(b => b.Model.Id == SelectedBackgroundId)?.Name ?? "Negro"}";
-
-    // ----- SIGUIENTE (desktop, wide window): the slide → would send -----
-
-    private (ServiceItem Item, int Index)? NextSlideRef => !IsScreenCleared && Live is { } live && FindItem(live.ItemId) is { IsMedia: false } item && live.SlideIndex + 1 < item.Slides.Count
-        ? (item, live.SlideIndex + 1)
-        : null;
-
-    public bool HasNextSlide => NextSlideRef is not null;
-
-    public ProjectionFrame NextFrame
-    {
-        get
-        {
-            if (NextSlideRef is not { } next)
-            {
-                return ProjectionFrame.Black;
-            }
-
-            var background = Backgrounds.FirstOrDefault(b => b.Model.Id == SelectedBackgroundId)?.Model;
-            return new ProjectionFrame(background, next.Item.Slides[next.Index].Content);
-        }
-    }
-
-    public string NextSlideHint => NextSlideRef is { } next
-        ? $"{next.Item.Slides[next.Index].Label ?? $"Diapositiva {next.Index + 1}"} · → para enviarla al TV"
-        : Live is null || IsScreenCleared
-            ? "Envía una diapositiva al TV y aquí verás la que sigue."
-            : "No hay más diapositivas en este elemento.";
 
     // ===== Workspace =====
 
@@ -352,12 +325,11 @@ public sealed partial class LiveConsoleViewModel : ObservableObject
 
     public bool IsBibleOpen => BiblePicker is not null;
 
+    // The library panel is always on screen (not a sheet): entries are dragged to the service or added with "+".
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsAddOpen), nameof(IsModalOpen))]
-    public partial AddToServiceViewModel? AddSheet { get; set; }
+    public partial LibraryPanelViewModel? Library { get; set; }
 
-    public bool IsAddOpen => AddSheet is not null;
-    public bool IsModalOpen => IsConfirmingClear || IsBibleOpen || IsAddOpen || BlockTimer?.IsSheetOpen == true;
+    public bool IsModalOpen => IsConfirmingClear || IsBibleOpen || BlockTimer?.IsSheetOpen == true;
 
     // ===== Lifecycle =====
 
@@ -439,7 +411,7 @@ public sealed partial class LiveConsoleViewModel : ObservableObject
         _player.ProgressChanged -= OnPlayerProgress;
         _player.Ended -= OnPlayerEnded;
         _mediaCache.StateChanged -= OnMediaFileChanged;
-        CloseAddSheet();
+        CloseLibrary();
         CloseBiblePicker();
         _sync.Resume();
         _lifetime.Cancel();
@@ -769,35 +741,37 @@ public sealed partial class LiveConsoleViewModel : ObservableObject
 
     // ===== Service editing (§7.6) =====
 
-    [RelayCommand]
-    private void PresentAddToService()
+    private void OpenLibrary()
     {
-        var sheet = new AddToServiceViewModel(_library, AppendToService, ShowsMultimedia, _mediaCache, _ui);
-        AddSheet = sheet;
-        _ = sheet.LoadAsync();
+        CloseLibrary();
+        var library = new LibraryPanelViewModel(_library, AddLibraryItem, ShowsMultimedia, _mediaCache, _ui);
+        Library = library;
+        _ = LoadLibraryAsync(library);
     }
 
-    [RelayCommand]
-    private void CloseAddToService() => CloseAddSheet();
-
-    private void CloseAddSheet()
+    private static async Task LoadLibraryAsync(LibraryPanelViewModel library)
     {
-        AddSheet?.Dispose();
-        AddSheet = null;
+        try
+        {
+            await library.LoadAsync();
+        }
+        catch (Exception)
+        {
+            library.IsLoading = false;
+        }
     }
 
-    private void AppendToService(IReadOnlyList<ServiceItem> items)
+    private void CloseLibrary()
     {
-        CloseAddSheet();
-        if (items.Count == 0)
-        {
-            return;
-        }
+        Library?.Dispose();
+        Library = null;
+    }
 
-        foreach (var item in items)
-        {
-            Items.Add(new ServiceItemViewModel(item, this));
-        }
+    /// <summary>A library entry dropped on the service (or added with "+"): it goes to the end of the list and opens.</summary>
+    private void AddLibraryItem(ServiceItem item)
+    {
+        IReadOnlyList<ServiceItem> items = [item];
+        Items.Add(new ServiceItemViewModel(item, this));
 
         // Files not on this PC yet start downloading now and stay here afterwards (api-contract §11). Until the
         // library answers they count as on their way, so nothing tries to play a file that is not here.
@@ -1159,6 +1133,6 @@ public sealed partial class LiveConsoleViewModel : ObservableObject
         nameof(CanGoPrevious), nameof(CanGoNext), nameof(MediaFrame), nameof(IsSelectedMediaActive), nameof(CanPresentSelectedMedia),
         nameof(MediaButtonText), nameof(MediaBadgeText), nameof(MediaHint), nameof(IsServiceEmpty), nameof(ClearServiceButtonText),
         nameof(IsOpenMediaReady), nameof(IsOpenMediaFailed), nameof(IsOpenMediaDownloading), nameof(MediaDownloadText),
-        nameof(BackgroundButtonText), nameof(HasNextSlide), nameof(NextFrame), nameof(NextSlideHint),
+        nameof(BackgroundButtonText),
     ];
 }

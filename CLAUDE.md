@@ -23,7 +23,7 @@ Church projection console: a control PC drives a TV/projector (second monitor) t
 - **No NavigationView**: the app is two screens (access ↔ live console) switched by `SessionStore`; secondary flows are in-window sheets (`IrisModal`) and flyouts.
 - **All UI is hand-written XAML** (or code-built visuals inside `DesignSystem/Controls` and `ProjectionCanvas`) — no designer output.
 - **After every change, run `dotnet build Iris.csproj -p:Platform=x64` and fix all errors before finishing.**
-- Data goes through `Core/Services` interfaces. `Mock*` implementations (wired in `Shell/AppDependencies.Mock()`) stay for design work and tests; `Live*` implementations talk to the API through `Core/Networking`, a local SQLite copy and an outbox (see `docs/plans`). In development the API is the in-app fake (`DataMode.Fake`).
+- Data goes through `Core/Services` interfaces. `Mock*` implementations (wired in `Shell/AppDependencies.Mock()`) stay for design work and tests; `Live*` implementations talk to the API through `Core/Networking`, a local SQLite copy and an outbox (see `docs/plans`). In development the API is the in-app fake (`DataMode.Fake`, chosen in Conexión); the app defaults to `Live` in Debug and Release. The deployed API is `https://iris-api.atmosferast.com/api/v1`.
 - Placeholder texts are public-domain hymns (19th-century translations) and RVR1909, or invented — never copyrighted lyrics.
 - Features covered by `docs/plans` are approved; anything not covered by the spec or the plans needs approval first.
 
@@ -43,11 +43,11 @@ Scripts/MacCheck Checks from a Mac (Core tests, the app's C#, x:Bind paths); exc
 
 `LiveConsoleViewModel` owns the presentation rules (spec §7): the service list only *opens* items; clicking a card/media stage *presents*. Every state change goes through `Changed()`, which refreshes derived properties and calls `IDisplayOutputService.Present(LiveFrame)`.
 
-Desktop layout (docs/plans/11): the console has a toolbar under the top bar and, from `IrisConsoleWideBreakpoint`, three columns (SERVICIO | workspace | EN VIVO + SIGUIENTE + mini player); narrower it falls back to the iPad's two. How the lyrics look (api-contract §6) lives in `Shared/Projection/ProjectionTypography`: every `ProjectionCanvas` follows it unless it gets its own `Typography` (the Proyección preview). Music and videos download only once added to a service (`IMediaCache.RequestAsync`); the console resolves each item's file by `ServiceItem.MediaId` when it plays or projects.
+Desktop layout (docs/plans/11): the console has a toolbar under the top bar and always three columns: BIBLIOTECA (`Features/AddToService/LibraryPanelView`, tabs Letras · Música · Multimedia, entries are dragged into the service or added with "+" / double click; there is no "Agregar" sheet and no SIGUIENTE preview) | workspace | SERVICIO over EN VIVO + mini player (play/pause, progress slider). How the lyrics look (api-contract §6) lives in `Shared/Projection/ProjectionTypography`: every `ProjectionCanvas` follows it unless it gets its own `Typography` (the Proyección preview). Music and videos download only once added to a service (`IMediaCache.RequestAsync`); the console resolves each item's file by `ServiceItem.MediaId` when it plays or projects.
 
 ## Build & run
 
-Tests: `dotnet test Tests/Iris.Tests.csproj` (xunit, plain `net8.0`). It links the UI-free sources (`Core/Formatting`, `Core/Models/Church.cs`, `Core/Timing`) instead of referencing the WinUI project; `Iris.csproj` excludes `Tests\**`. Add new pure-logic tests there.
+Tests: `dotnet test Tests/Iris.Tests.csproj` (xunit, plain `net8.0`). `Tests/LiveApiTests.cs` runs the real stack against a deployed API only when `IRIS_LIVE_URL`, `IRIS_LIVE_EMAIL` and `IRIS_LIVE_PASSWORD` are set (the server limits sign-in to 5/min per IP, so it uses one login). Everything under `Core/` is linked into the tests. It links the UI-free sources (`Core/Formatting`, `Core/Models/Church.cs`, `Core/Timing`) instead of referencing the WinUI project; `Iris.csproj` excludes `Tests\**`. Add new pure-logic tests there.
 
 A platform must always be specified; `AnyCPU` is not a valid configuration (platforms: `x86`, `x64`, `ARM64`).
 
@@ -67,4 +67,6 @@ Run from Visual Studio with **Iris (Package)**. The `bin/.../Iris.exe` of a norm
 - `PasswordBox` has no `PlaceholderForeground`; `IrisTextField` restyles TextBox/PasswordBox via lightweight-styling keys in its resources.
 - Glyph constants in `DesignSystem/IrisTheme.cs` are stored as literal private-use characters; edit them with the Edit tool using `\uXXXX` escapes.
 - `Package.appxmanifest` declares `systemai:systemAIModels` (on-device Windows AI) in addition to `runFullTrust`; those APIs need package identity and Copilot+ hardware.
+- A build that fails with XAML errors naming types that exist (e.g. `LeaderOption`) is a stale XAML cache: delete `obj\x64` and rebuild.
+- The v1 contract has no roles or church switcher; the role/permission code left in `Core/Models/Session.cs` is inert (`Mapping.ToSession` grants everything).
 - `Nullable` is enabled project-wide. New manifest image assets must also be added as `<Content>` items in `Iris.csproj`.

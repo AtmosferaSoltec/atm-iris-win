@@ -135,6 +135,7 @@ type ClientInfo = { platform: Platform; deviceName?: string };  // deviceName �
 2. Cada petición lleva el access token. Si al access token le queda menos de 60 s, refrescar **antes** de la petición.
 3. Si una petición responde `401 UNAUTHORIZED`: refrescar **una vez** y reintentar. Varias peticiones concurrentes comparten el **mismo** refresh en vuelo (*single flight*).
 4. Si `POST /auth/refresh` responde `401` (`INVALID_REFRESH_TOKEN` o `UNAUTHORIZED`): borrar tokens y volver a la pantalla de acceso.
+   - Rotación: cada refresh entrega un refresh token nuevo. Reusar el anterior dentro de **30 s** devuelve otra vez un `AuthResult` válido (ventana de gracia para reintentos y peticiones en paralelo); pasado ese tiempo es `401 INVALID_REFRESH_TOKEN` y la API cierra la sesión.
 5. Un error de red o 5xx en el refresh **no** cierra la sesión: se reintenta más tarde. Las consolas siguen trabajando sin conexión (§12).
 
 ---

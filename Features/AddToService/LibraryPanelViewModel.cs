@@ -12,13 +12,13 @@ using Iris.Features.Bible;
 
 namespace Iris.Features.AddToService;
 
-/// <summary>A selectable library entry (lyrics/music rows, image/video tiles).</summary>
+/// <summary>A library entry: a lyric sheet, a music track, an image or a video. Dragged or added with "+" into the service.</summary>
 public sealed partial class LibraryEntryViewModel : ObservableObject
 {
     private Func<ServiceItem> _toServiceItem;
     private MediaAsset? _asset;
 
-    private LibraryEntryViewModel(ServiceItemKind kind, string title, string subtitle, Func<ServiceItem> toServiceItem, AddToServiceViewModel owner)
+    private LibraryEntryViewModel(ServiceItemKind kind, string title, string subtitle, Func<ServiceItem> toServiceItem, LibraryPanelViewModel owner)
     {
         Kind = kind;
         Title = title;
@@ -27,7 +27,7 @@ public sealed partial class LibraryEntryViewModel : ObservableObject
         _toServiceItem = toServiceItem;
     }
 
-    public AddToServiceViewModel Owner { get; }
+    public LibraryPanelViewModel Owner { get; }
 
     public ServiceItemKind Kind { get; }
 
@@ -74,7 +74,12 @@ public sealed partial class LibraryEntryViewModel : ObservableObject
 
     public bool IsVideo => Kind == ServiceItemKind.Video;
 
-    /// <summary>Tiles reuse the projection renderer: the artwork gradient in 16:9.</summary>
+    /// <summary>Images and videos show their picture; lyrics and music show the kind's icon.</summary>
+    public bool ShowsThumbnail => Kind is ServiceItemKind.Image or ServiceItemKind.Video;
+
+    public bool ShowsIcon => !ShowsThumbnail;
+
+    /// <summary>Thumbnails reuse the projection renderer: the artwork gradient in 16:9.</summary>
     public ProjectionFrame ThumbnailFrame => _asset switch
     {
         { Kind: MediaKind.Video } video => new ProjectionFrame(null, new VideoContent(Title, video.Duration ?? TimeSpan.Zero, video.LocalPath)),
@@ -84,12 +89,9 @@ public sealed partial class LibraryEntryViewModel : ObservableObject
 
     public string SearchKey { get; private init; } = string.Empty;
 
-    [ObservableProperty]
-    public partial bool IsSelected { get; set; }
-
     public ServiceItem ToServiceItem() => _toServiceItem();
 
-    public static LibraryEntryViewModel FromLyrics(LyricSheet sheet, AddToServiceViewModel owner) =>
+    public static LibraryEntryViewModel FromLyrics(LyricSheet sheet, LibraryPanelViewModel owner) =>
         new(ServiceItemKind.Song, sheet.Title, sheet.Author, () => ServiceItemFactory.FromLyrics(sheet), owner)
         {
             FirstLine = sheet.FirstLine,
@@ -97,10 +99,7 @@ public sealed partial class LibraryEntryViewModel : ObservableObject
             SearchKey = BiblePickerViewModel.Normalize($"{sheet.Title} {sheet.Author} {string.Join(' ', sheet.Sections.Select(s => (s.Content as TextContent)?.Body))}"),
         };
 
-    public static LibraryEntryViewModel FromMedia(MediaAsset asset, AddToServiceViewModel owner) =>
-        FromMediaCore(asset, owner);
-
-    private static LibraryEntryViewModel FromMediaCore(MediaAsset asset, AddToServiceViewModel owner)
+    public static LibraryEntryViewModel FromMedia(MediaAsset asset, LibraryPanelViewModel owner)
     {
         var entry = new LibraryEntryViewModel(asset.Kind switch { MediaKind.Music => ServiceItemKind.Music, MediaKind.Image => ServiceItemKind.Image, _ => ServiceItemKind.Video },
             asset.Title, asset.Subtitle, () => ServiceItemFactory.FromMedia(asset), owner)
@@ -114,21 +113,27 @@ public sealed partial class LibraryEntryViewModel : ObservableObject
     }
 }
 
-/// <summary>"Agregar al servicio" sheet (IRIS_SPEC §6.4): 4 tabs, search, ordered multi-selection across tabs.</summary>
-public sealed partial class AddToServiceViewModel : ObservableObject, IDisposable
+/// <summary>
+/// The console's library panel (IRIS_SPEC §6.4): Letras · Música · Multimedia tabs and a search box. Entries are dragged
+/// into the service list, or added with "+" / double click (the keyboard and mouse-less way).
+/// </summary>
+public sealed partial class LibraryPanelViewModel : ObservableObject, IDisposable
 {
+    public const int LyricsTab = 0;
+    public const int MusicTab = 1;
+    public const int MultimediaTab = 2;
+
     private readonly ILibraryRepository _library;
     private readonly IMediaCache? _cache;
     private readonly IUiDispatcher? _ui;
+    private readonly Action<ServiceItem> _onAdd;
+    private readonly List<LibraryEntryViewModel>[] _tabs = [[], [], []];
     private bool _refreshScheduled;
     private bool _disposed;
-    private readonly Action<IReadOnlyList<ServiceItem>> _onConfirm;
-    private readonly List<LibraryEntryViewModel>[] _tabs = [[], [], [], []];
-    private readonly List<LibraryEntryViewModel> _selection = [];
 
-    public AddToServiceViewModel(
+    public LibraryPanelViewModel(
         ILibraryRepository library,
-        Action<IReadOnlyList<ServiceItem>> onConfirm,
+        Action<ServiceItem> onAdd,
         bool includesMultimedia = true,
         IMediaCache? cache = null,
         IUiDispatcher? ui = null)
@@ -136,26 +141,19 @@ public sealed partial class AddToServiceViewModel : ObservableObject, IDisposabl
         _library = library;
         _cache = cache;
         _ui = ui;
-        _onConfirm = onConfirm;
+        _onAdd = onAdd;
         IncludesMultimedia = includesMultimedia;
-        Tabs = includesMultimedia ? ["Letras", "Música", "Imágenes", "Videos"] : ["Letras"];
+        Tabs = includesMultimedia ? ["Letras", "Música", "Multimedia"] : ["Letras"];
     }
 
     /// <summary>Without the Multimedia module only Letras exists and the segmented control is hidden (§7.8).</summary>
     public bool IncludesMultimedia { get; }
 
-    public string Subtitle => IncludesMultimedia ? "Elige letras, música, imágenes o videos de tu biblioteca." : "Elige letras de tu biblioteca.";
-
     public IList<string> Tabs { get; }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsRowTab), nameof(IsTileTab), nameof(ShowsMusicHint))]
+    [NotifyPropertyChangedFor(nameof(ShowsMusicHint), nameof(ShowsMultimediaHint))]
     public partial int TabIndex { get; set; }
-
-    /// <summary>Letras and Música render as rows; Imágenes and Videos as tiles.</summary>
-    public bool IsRowTab => TabIndex <= 1;
-
-    public bool IsTileTab => !IsRowTab;
 
     [ObservableProperty]
     public partial string Query { get; set; } = string.Empty;
@@ -173,41 +171,39 @@ public sealed partial class AddToServiceViewModel : ObservableObject, IDisposabl
     /// <summary>A search with no hits, or an empty library of the current tab.</summary>
     public string EmptyTitle => IsSearching ? "Sin resultados" : TabIndex switch
     {
-        0 => "Aún no hay canciones",
-        1 => "Aún no hay música",
-        2 => "Aún no hay imágenes",
-        _ => "Aún no hay videos",
+        LyricsTab => "Aún no hay canciones",
+        MusicTab => "Aún no hay música",
+        _ => "Aún no hay multimedia",
     };
 
     public string EmptyMessage => IsSearching ? "Prueba con otro título, autor o descripción." : TabIndex switch
     {
-        0 => "Agrégalas desde la web de Iris.",
-        1 => "Sube tus pistas (MP3, M4A, WAV…) desde la web de Iris, en Música.",
-        _ => "Súbelos desde la web de Iris, en Multimedia.",
+        LyricsTab => "Agrégalas desde la web de Iris.",
+        MusicTab => "Sube tus pistas (MP3, M4A, WAV…) desde la web de Iris, en Música.",
+        _ => "Súbelas desde la web de Iris, en Multimedia.",
     };
 
     /// <summary>Música: where the tracks come from and when they reach this PC.</summary>
-    public bool ShowsMusicHint => TabIndex == 1;
+    public bool ShowsMusicHint => TabIndex == MusicTab;
 
-    public int SelectedCount => _selection.Count;
-
-    public string SelectedCountText => $"Seleccionados: {_selection.Count}";
-
-    public bool CanConfirm => _selection.Count > 0;
+    public bool ShowsMultimediaHint => TabIndex == MultimediaTab;
 
     public async Task LoadAsync()
     {
-        _tabs[0] = (await _library.LyricsAsync()).Select(l => LibraryEntryViewModel.FromLyrics(l, this)).ToList();
+        _tabs[LyricsTab] = (await _library.LyricsAsync()).Select(l => LibraryEntryViewModel.FromLyrics(l, this)).ToList();
         if (IncludesMultimedia)
         {
             var music = _library.MediaAsync(MediaKind.Music);
             var images = _library.MediaAsync(MediaKind.Image);
             var videos = _library.MediaAsync(MediaKind.Video);
-            _tabs[1] = (await music).Select(m => LibraryEntryViewModel.FromMedia(m, this)).ToList();
+            _tabs[MusicTab] = (await music).Select(m => LibraryEntryViewModel.FromMedia(m, this)).ToList();
             // Backgrounds belong to the background picker, not to the library (the web's Fondos section).
-            _tabs[2] = (await images).Where(m => !m.IsBackground).Select(m => LibraryEntryViewModel.FromMedia(m, this)).ToList();
-            _tabs[3] = (await videos).Where(m => !m.IsBackground).Select(m => LibraryEntryViewModel.FromMedia(m, this)).ToList();
+            _tabs[MultimediaTab] = (await images).Where(m => !m.IsBackground)
+                .Concat((await videos).Where(m => !m.IsBackground))
+                .Select(m => LibraryEntryViewModel.FromMedia(m, this))
+                .ToList();
         }
+
         IsLoading = false;
         Filter();
         if (_cache is not null)
@@ -247,15 +243,20 @@ public sealed partial class AddToServiceViewModel : ObservableObject, IDisposabl
 
     private async Task RefreshMediaStatesAsync()
     {
-        foreach (var (tab, kind) in new[] { (1, MediaKind.Music), (2, MediaKind.Image), (3, MediaKind.Video) })
+        var fresh = new Dictionary<Guid, MediaAsset>();
+        foreach (var kind in new[] { MediaKind.Music, MediaKind.Image, MediaKind.Video })
         {
-            var fresh = (await _library.MediaAsync(kind)).ToDictionary(m => m.Id);
-            foreach (var entry in _tabs[tab])
+            foreach (var asset in await _library.MediaAsync(kind))
             {
-                if (entry.MediaId is { } mediaId && fresh.TryGetValue(mediaId, out var asset))
-                {
-                    entry.Apply(asset);
-                }
+                fresh[asset.Id] = asset;
+            }
+        }
+
+        foreach (var entry in _tabs.SelectMany(t => t))
+        {
+            if (entry.MediaId is { } mediaId && fresh.TryGetValue(mediaId, out var asset))
+            {
+                entry.Apply(asset);
             }
         }
     }
@@ -264,30 +265,13 @@ public sealed partial class AddToServiceViewModel : ObservableObject, IDisposabl
 
     partial void OnQueryChanged(string value) => Filter();
 
+    /// <summary>"+" / double click / a drop on the service list: puts the entry at the end of the service.</summary>
     [RelayCommand]
-    private void Toggle(LibraryEntryViewModel entry)
+    private void Add(LibraryEntryViewModel? entry)
     {
-        entry.IsSelected = !entry.IsSelected;
-        if (entry.IsSelected)
+        if (entry is not null)
         {
-            _selection.Add(entry);
-        }
-        else
-        {
-            _selection.Remove(entry);
-        }
-
-        OnPropertyChanged(nameof(SelectedCount));
-        OnPropertyChanged(nameof(SelectedCountText));
-        OnPropertyChanged(nameof(CanConfirm));
-    }
-
-    [RelayCommand]
-    private void Confirm()
-    {
-        if (_selection.Count > 0)
-        {
-            _onConfirm(_selection.Select(e => e.ToServiceItem()).ToList());
+            _onAdd(entry.ToServiceItem());
         }
     }
 
@@ -295,7 +279,7 @@ public sealed partial class AddToServiceViewModel : ObservableObject, IDisposabl
     {
         var query = BiblePickerViewModel.Normalize(Query);
         Entries.Clear();
-        foreach (var entry in _tabs[Math.Clamp(TabIndex, 0, 3)].Where(e => query.Length == 0 || e.SearchKey.Contains(query, StringComparison.Ordinal)))
+        foreach (var entry in _tabs[Math.Clamp(TabIndex, 0, _tabs.Length - 1)].Where(e => query.Length == 0 || e.SearchKey.Contains(query, StringComparison.Ordinal)))
         {
             Entries.Add(entry);
         }

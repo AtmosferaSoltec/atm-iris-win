@@ -1,5 +1,10 @@
 # 03 · Cuenta y permisos
 
+> **Reemplazada por el contrato v1 (ver fase 11).** La API ya no tiene roles, equipo ni selector de iglesia: una cuenta por
+> iglesia, todas las acciones disponibles. Lo de abajo describe lo que se construyó entonces; hoy `Mapping.ToSession` da
+> todos los permisos y ninguna otra iglesia, por lo que nada de esto se activa. Queda el menú de cuenta (nombre, correo,
+> iglesia, cerrar sesión, cerrar en todos).
+
 ## Objetivo
 
 Que la consola respete los roles (contrato §3), permita cambiar de iglesia y cerrar sesión en todos

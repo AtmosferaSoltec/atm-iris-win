@@ -9,7 +9,7 @@ namespace Iris.Shell.Platform;
 
 /// <summary>
 /// <see cref="IAppSettings"/> over <c>ApplicationData.LocalSettings</c> (packaged) or a small JSON file (unpackaged dev copy).
-/// Defaults: Fake in Debug, Live in Release.
+/// Defaults: Live against the deployed API (Fake and Mock are chosen in Conexión, Ctrl+Shift+F12).
 /// </summary>
 public sealed class LocalAppSettings : IAppSettings
 {
@@ -17,11 +17,7 @@ public sealed class LocalAppSettings : IAppSettings
     private const string UrlKey = "ApiBaseUrl";
     private const string OfflineKey = "SimulateOffline";
 
-#if DEBUG
-    private const DataMode DefaultMode = DataMode.Fake;
-#else
     private const DataMode DefaultMode = DataMode.Live;
-#endif
 
     private readonly ApplicationDataContainer? _container;
     private readonly string _filePath = AppPaths.File("settings.json");

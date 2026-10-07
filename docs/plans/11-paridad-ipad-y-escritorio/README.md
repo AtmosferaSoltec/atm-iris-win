@@ -52,7 +52,7 @@ herramientas).
 
 - **Barra de herramientas** bajo la barra superior: Agregar · Biblia | Limpiar pantalla · Fondo (con el nombre del fondo
   actual). Los mismos atajos de siempre. El lado derecho queda libre para lo que venga.
-- **Tres columnas desde 1400 px**: SERVICIO | área de trabajo | EN VIVO + **SIGUIENTE** (la diapositiva que enviaría →)
+- **Tres columnas siempre** (rediseño del 2026-10-07): BIBLIOTECA (pestañas Letras · Música · Multimedia, búsqueda; se arrastra al servicio o se agrega con "+" / doble clic) | área de trabajo | SERVICIO arriba y EN VIVO abajo con el mini reproductor (pausa, reproducir, barra de progreso). Se quitó la hoja "Agregar al servicio" y la vista SIGUIENTE; `Ctrl+N` enfoca el buscador de la biblioteca. Mínimo de ventana 1100 px.
   + mini reproductor. Más angosto vuelve al diseño del iPad (EN VIVO bajo SERVICIO).
 - El encabezado del área de trabajo conserva ‹ › (Biblia) y Editar; limpiar, fondos y Biblia pasaron a la barra.
 
@@ -132,4 +132,9 @@ con ✅/❌, los errores con su mensaje y lo que corregiste. Luego marca la fase
 
 ## Resultado en Windows
 
-_(Pendiente.)_
+**2026-10-07 · Windows 11 Pro 10.0.26200** (sesión sin interfaz: solo compilación, pruebas y API real)
+
+- ✅ 1. Compilación y pruebas: build Debug y Release sin errores; 90 pruebas verdes. Con `obj` viejo el XAML falla con `LeaderOption` (caché): borrar `obj\x64`.
+- ✅ 4. Contra la API real (`https://iris-api.atmosferast.com/api/v1`): login, sync completo, `availableModules.bible = false`, `storage.breakdown` presente, 189 canciones y 6 medios decodifican con el stack de la app. Biblia 404 como el contrato.
+- ⚠️ 2 y 3 (pantallas, TV, dos monitores): **sin verificar**; hay que hacerlas a mano con las listas de arriba.
+- Desviación: el código conserva restos del modelo con roles (ver fase 10, *Desviaciones*).

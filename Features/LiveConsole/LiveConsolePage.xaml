@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--  Live console (IRIS_SPEC §6.2): top bar in the title bar, SERVICIO + EN VIVO column, workspace.  -->
+<!--  Live console (IRIS_SPEC §6.2): top bar in the title bar, BIBLIOTECA | workspace | SERVICIO over EN VIVO.  -->
 <Page
     x:Class="Iris.Features.LiveConsole.LiveConsolePage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -82,26 +82,6 @@
     </Page.Resources>
 
     <Grid>
-        <VisualStateManager.VisualStateGroups>
-            <VisualStateGroup>
-                <VisualState x:Name="WideColumns">
-                    <VisualState.StateTriggers>
-                        <AdaptiveTrigger MinWindowWidth="{StaticResource IrisConsoleWideBreakpoint}" />
-                    </VisualState.StateTriggers>
-                    <VisualState.Setters>
-                        <Setter Target="SideColumn.Width" Value="{StaticResource IrisColumnWidthWide}" />
-                        <Setter Target="LiveColumn.Width" Value="{StaticResource IrisLiveColumnWidth}" />
-                        <Setter Target="ServicePanel.(Grid.RowSpan)" Value="2" />
-                        <Setter Target="LivePanel.(Grid.Row)" Value="0" />
-                        <Setter Target="LivePanel.(Grid.Column)" Value="2" />
-                        <Setter Target="LivePanel.(Grid.RowSpan)" Value="2" />
-                        <Setter Target="NextPreview.Visibility" Value="Visible" />
-                    </VisualState.Setters>
-                </VisualState>
-                <VisualState x:Name="NarrowColumns" />
-            </VisualStateGroup>
-        </VisualStateManager.VisualStateGroups>
-
         <Grid.RowDefinitions>
             <RowDefinition Height="{StaticResource IrisTopBarRowHeight}" />
             <RowDefinition Height="Auto" />
@@ -127,19 +107,6 @@
                 AutomationProperties.Name="Barra de herramientas"
                 Orientation="Horizontal"
                 Spacing="{StaticResource IrisSpacingSm}">
-                <Button
-                    AutomationProperties.Name="Agregar al servicio"
-                    Command="{x:Bind ViewModel.PresentAddToServiceCommand}"
-                    Style="{StaticResource IrisPillButtonStyle}"
-                    ToolTipService.ToolTip="Agregar al servicio (Ctrl+N)">
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                        <FontIcon
-                            FontSize="{StaticResource IrisCaptionFontSize}"
-                            Glyph="&#xE710;"
-                            Style="{StaticResource IrisIconStyle}" />
-                        <TextBlock Text="Agregar" />
-                    </StackPanel>
-                </Button>
                 <Button
                     AutomationProperties.Name="Biblia"
                     Command="{x:Bind ViewModel.PresentBibleCommand}"
@@ -210,35 +177,43 @@
         </Border>
 
         <!--  ===== Body =====  -->
-        <!--
-            Narrow window: SERVICIO over EN VIVO | workspace (the iPad layout).
-            Wide window (desktop): SERVICIO | workspace | EN VIVO + SIGUIENTE + mini player.
-        -->
+        <!--  BIBLIOTECA (tabs; drag from here) | workspace | SERVICIO over EN VIVO + mini player (drop here)  -->
         <Grid
             Grid.Row="2"
             Padding="{StaticResource IrisConsoleBodyPadding}"
-            ColumnSpacing="{StaticResource IrisSpacingMd}"
-            RowSpacing="{StaticResource IrisSpacingMd}">
+            ColumnSpacing="{StaticResource IrisSpacingMd}">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition x:Name="SideColumn" Width="{StaticResource IrisColumnWidthNarrow}" />
+                <ColumnDefinition Width="{StaticResource IrisColumnWidthNarrow}" />
                 <ColumnDefinition Width="*" />
-                <ColumnDefinition x:Name="LiveColumn" Width="0" />
+                <ColumnDefinition Width="{StaticResource IrisColumnWidthWide}" />
             </Grid.ColumnDefinitions>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="*" />
-                <RowDefinition Height="Auto" />
-            </Grid.RowDefinitions>
 
-                <!--  a) SERVICIO  -->
+            <!--  a) BIBLIOTECA  -->
+            <Border Padding="{StaticResource IrisPaddingMd}" Style="{StaticResource IrisConsoleSurfaceStyle}">
+                <add:LibraryPanelView x:Name="LibraryPane" ViewModel="{x:Bind ViewModel.Library, Mode=OneWay}" />
+            </Border>
+
+            <!--  c) SERVICIO + EN VIVO  -->
+            <Grid
+                Grid.Column="2"
+                RowSpacing="{StaticResource IrisSpacingMd}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <!--  SERVICIO  -->
                 <Border
                     x:Name="ServicePanel"
                     Padding="{StaticResource IrisPaddingMd}"
+                    AllowDrop="True"
+                    DragOver="OnServiceDragOver"
+                    Drop="OnServiceDrop"
                     Style="{StaticResource IrisConsoleSurfaceStyle}">
                     <Grid RowSpacing="{StaticResource IrisSpacingSm}">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="*" />
-                            <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
 
                         <controls:IrisSectionHeader Padding="4,0,0,0" Title="Servicio">
@@ -297,6 +272,7 @@
                             Padding="{StaticResource IrisPaddingMd}"
                             HorizontalAlignment="Center"
                             VerticalAlignment="Center"
+                            IsHitTestVisible="False"
                             Spacing="{StaticResource IrisSpacingXs}"
                             Visibility="{x:Bind ViewModel.IsServiceEmpty, Mode=OneWay}">
                             <FontIcon
@@ -321,25 +297,10 @@
                             Height="28"
                             IsActive="{x:Bind ViewModel.IsLoading, Mode=OneWay}" />
 
-                        <Button
-                            Grid.Row="2"
-                            HorizontalAlignment="Stretch"
-                            AutomationProperties.Name="Agregar"
-                            Command="{x:Bind ViewModel.PresentAddToServiceCommand}"
-                            Style="{StaticResource IrisPillButtonStyle}"
-                            ToolTipService.ToolTip="Agregar al servicio (Ctrl+N)">
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                <FontIcon
-                                    FontSize="{StaticResource IrisCaptionFontSize}"
-                                    Glyph="&#xE710;"
-                                    Style="{StaticResource IrisIconStyle}" />
-                                <TextBlock Text="Agregar" />
-                            </StackPanel>
-                        </Button>
                     </Grid>
                 </Border>
 
-                <!--  b) EN VIVO (+ SIGUIENTE on a wide window) + mini player  -->
+                <!--  EN VIVO + mini player  -->
                 <Border
                     x:Name="LivePanel"
                     Grid.Row="1"
@@ -358,29 +319,6 @@
                                 CornerRadius="{StaticResource IrisRadiusMd}" />
                             <controls:IrisLiveIndicator Margin="{StaticResource IrisPaddingXs}" Text="EN VIVO" />
                         </Grid>
-
-                        <!--  SIGUIENTE: the slide that → sends next (wide window only)  -->
-                        <StackPanel
-                            x:Name="NextPreview"
-                            Spacing="{StaticResource IrisSpacingXs}"
-                            Visibility="Collapsed">
-                            <controls:IrisSectionHeader Padding="4,0,0,0" Title="Siguiente" />
-                            <Grid
-                                AutomationProperties.Name="Siguiente diapositiva"
-                                CornerRadius="{StaticResource IrisRadiusMd}"
-                                Visibility="{x:Bind ViewModel.HasNextSlide, Mode=OneWay}">
-                                <projection:ProjectionCanvas DecodePixelWidth="{StaticResource IrisThumbnailDecodeWidth}" Frame="{x:Bind ViewModel.NextFrame, Mode=OneWay}" />
-                                <Border
-                                    BorderBrush="{StaticResource IrisStrokeBrush}"
-                                    BorderThickness="{StaticResource IrisHairline}"
-                                    CornerRadius="{StaticResource IrisRadiusMd}" />
-                            </Grid>
-                            <TextBlock
-                                Padding="4,0"
-                                Style="{StaticResource IrisCaptionTextStyle}"
-                                Text="{x:Bind ViewModel.NextSlideHint, Mode=OneWay}"
-                                TextWrapping="Wrap" />
-                        </StackPanel>
 
                         <!--  Mini player: only while music or video is loaded  -->
                         <StackPanel
@@ -497,10 +435,10 @@
                         </StackPanel>
                     </StackPanel>
                 </Border>
+            </Grid>
 
-            <!--  Workspace: block timer (when the service tracks time) + the open item  -->
+            <!--  b) Workspace: block timer (when the service tracks time) + the open item  -->
             <Grid
-                Grid.RowSpan="2"
                 Grid.Column="1"
                 RowSpacing="{StaticResource IrisSpacingMd}">
                 <Grid.RowDefinitions>
@@ -781,15 +719,6 @@
             PanelHeight="640"
             PanelWidth="{StaticResource IrisFormModalWidth}">
             <bible:BiblePickerView CloseCommand="{x:Bind ViewModel.CloseBibleCommand}" ViewModel="{x:Bind ViewModel.BiblePicker, Mode=OneWay}" />
-        </controls:IrisModal>
-
-        <controls:IrisModal
-            Grid.RowSpan="2"
-            CloseCommand="{x:Bind ViewModel.CloseAddToServiceCommand}"
-            IsOpen="{x:Bind ViewModel.IsAddOpen, Mode=OneWay}"
-            PanelHeight="720"
-            PanelWidth="{StaticResource IrisPageModalWidth}">
-            <add:AddToServiceView CloseCommand="{x:Bind ViewModel.CloseAddToServiceCommand}" ViewModel="{x:Bind ViewModel.AddSheet, Mode=OneWay}" />
         </controls:IrisModal>
 
         <!--  Block-timer sheets  -->

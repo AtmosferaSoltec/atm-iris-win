@@ -26,7 +26,7 @@ public interface IAppSettings
 
 public sealed class InMemoryAppSettings : IAppSettings
 {
-    public const string DefaultApiBaseUrl = "http://localhost:3020/api/v1";
+    public const string DefaultApiBaseUrl = "https://iris-api.atmosferast.com/api/v1";
 
     public DataMode DataMode { get; set; } = DataMode.Fake;
 

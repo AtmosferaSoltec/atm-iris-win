@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--  Library panel of the console (IRIS_SPEC §6.4): tabs, search, entries to drag into the service.  -->
+<UserControl
+    x:Class="Iris.Features.AddToService.LibraryPanelView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:add="using:Iris.Features.AddToService"
+    xmlns:controls="using:Iris.DesignSystem.Controls"
+    xmlns:design="using:Iris.DesignSystem"
+    xmlns:projection="using:Iris.Shared.Projection">
+
+    <UserControl.Resources>
+        <DataTemplate x:Key="EntryTemplate" x:DataType="add:LibraryEntryViewModel">
+            <Grid
+                Padding="{StaticResource IrisPaddingSm}"
+                Background="{StaticResource IrisSurfaceBrush}"
+                BorderBrush="{StaticResource IrisStrokeBrush}"
+                BorderThickness="{StaticResource IrisHairline}"
+                ColumnSpacing="{StaticResource IrisSpacingSm}"
+                CornerRadius="{StaticResource IrisRadiusMd}"
+                ToolTipService.ToolTip="Arrástralo al servicio, o haz doble clic para agregarlo">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <!--  Lyrics and music: the kind's icon  -->
+                <Grid
+                    Width="{StaticResource IrisRowIconSize}"
+                    Height="{StaticResource IrisRowIconSize}"
+                    VerticalAlignment="Center"
+                    Background="{x:Bind design:KindStyle.TintBrush(Kind)}"
+                    CornerRadius="{StaticResource IrisRadiusSm}"
+                    Visibility="{x:Bind ShowsIcon}">
+                    <FontIcon
+                        Foreground="{x:Bind design:KindStyle.Brush(Kind)}"
+                        Glyph="{x:Bind design:KindStyle.Glyph(Kind)}"
+                        Style="{StaticResource IrisIconStyle}" />
+                </Grid>
+
+                <!--  Images and videos: the picture; not on this PC yet → progress over it  -->
+                <Grid
+                    Width="{StaticResource IrisLibraryThumbWidth}"
+                    VerticalAlignment="Center"
+                    CornerRadius="{StaticResource IrisRadiusSm}"
+                    Visibility="{x:Bind ShowsThumbnail}">
+                    <projection:ProjectionCanvas DecodePixelWidth="{StaticResource IrisThumbnailDecodeWidth}" Frame="{x:Bind ThumbnailFrame, Mode=OneWay}" />
+                    <Grid Background="{StaticResource IrisScrimBrush}" Visibility="{x:Bind IsDownloading, Mode=OneWay}">
+                        <ProgressBar
+                            Margin="{StaticResource IrisPaddingXs}"
+                            VerticalAlignment="Center"
+                            Maximum="100"
+                            Value="{x:Bind ProgressPercent, Mode=OneWay}" />
+                    </Grid>
+                    <Grid
+                        Width="{StaticResource IrisPlayBadgeSize}"
+                        Height="{StaticResource IrisPlayBadgeSize}"
+                        Visibility="{x:Bind IsVideo}">
+                        <Ellipse Fill="{StaticResource IrisScrimBrush}" Stroke="{StaticResource IrisStrokeStrongBrush}" />
+                        <FontIcon
+                            FontSize="{StaticResource IrisCaptionFontSize}"
+                            Glyph="&#xE768;"
+                            Style="{StaticResource IrisIconStyle}" />
+                    </Grid>
+                    <Border
+                        BorderBrush="{StaticResource IrisStrokeBrush}"
+                        BorderThickness="{StaticResource IrisHairline}"
+                        CornerRadius="{StaticResource IrisRadiusSm}" />
+                </Grid>
+
+                <StackPanel
+                    Grid.Column="1"
+                    VerticalAlignment="Center"
+                    Spacing="2">
+                    <TextBlock
+                        MaxLines="1"
+                        Style="{StaticResource IrisCalloutEmphasizedTextStyle}"
+                        Text="{x:Bind Title}"
+                        TextTrimming="CharacterEllipsis" />
+                    <TextBlock
+                        MaxLines="1"
+                        Style="{StaticResource IrisCaptionTextStyle}"
+                        Text="{x:Bind Subtitle}"
+                        TextTrimming="CharacterEllipsis" />
+                    <TextBlock
+                        Style="{StaticResource IrisCaptionTextStyle}"
+                        Text="{x:Bind StatusText, Mode=OneWay}"
+                        Visibility="{x:Bind IsUnavailable, Mode=OneWay}" />
+                    <TextBlock
+                        MaxLines="1"
+                        Style="{StaticResource IrisCaptionTextStyle}"
+                        Text="{x:Bind Duration}"
+                        Visibility="{x:Bind HasDuration}" />
+                </StackPanel>
+
+                <Button
+                    Grid.Column="2"
+                    Width="{StaticResource IrisControlHeight}"
+                    Height="{StaticResource IrisControlHeight}"
+                    VerticalAlignment="Center"
+                    AutomationProperties.Name="{x:Bind Title}"
+                    Command="{x:Bind Owner.AddCommand}"
+                    CommandParameter="{x:Bind}"
+                    Style="{StaticResource IrisSubtleIconButtonStyle}"
+                    ToolTipService.ToolTip="Agregar al servicio">
+                    <FontIcon Glyph="&#xE710;" Style="{StaticResource IrisIconStyle}" />
+                </Button>
+            </Grid>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <Grid RowSpacing="{StaticResource IrisSpacingSm}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <controls:IrisSectionHeader Padding="4,0,0,0" Title="Biblioteca" />
+
+        <controls:IrisSegmentedControl
+            Grid.Row="1"
+            Items="{x:Bind ViewModel.Tabs, Mode=OneWay, FallbackValue={x:Null}}"
+            SelectedIndex="{x:Bind ViewModel.TabIndex, Mode=TwoWay, FallbackValue=0}"
+            Visibility="{x:Bind ViewModel.IncludesMultimedia, Mode=OneWay, FallbackValue=Collapsed}" />
+
+        <StackPanel Grid.Row="2" Spacing="{StaticResource IrisSpacingXs}">
+            <controls:IrisTextField
+                x:Name="SearchField"
+                Glyph="&#xE721;"
+                Placeholder="Buscar"
+                Text="{x:Bind ViewModel.Query, Mode=TwoWay, FallbackValue=''}" />
+            <TextBlock
+                Padding="4,0"
+                Style="{StaticResource IrisCaptionTextStyle}"
+                Text="Se suben desde la web, en Música. Al agregarlas al servicio se descargan y quedan en esta computadora."
+                TextWrapping="Wrap"
+                Visibility="{x:Bind ViewModel.ShowsMusicHint, Mode=OneWay, FallbackValue=Collapsed}" />
+            <TextBlock
+                Padding="4,0"
+                Style="{StaticResource IrisCaptionTextStyle}"
+                Text="Imágenes y videos subidos desde la web, en Multimedia. Se descargan al agregarlos al servicio."
+                TextWrapping="Wrap"
+                Visibility="{x:Bind ViewModel.ShowsMultimediaHint, Mode=OneWay, FallbackValue=Collapsed}" />
+        </StackPanel>
+
+        <Grid Grid.Row="3">
+            <ListView
+                x:Name="EntryList"
+                AutomationProperties.Name="Biblioteca"
+                CanDragItems="True"
+                DoubleTapped="OnEntryDoubleTapped"
+                DragItemsStarting="OnDragItemsStarting"
+                ItemContainerStyle="{StaticResource IrisListRowContainerStyle}"
+                ItemTemplate="{StaticResource EntryTemplate}"
+                ItemsSource="{x:Bind ViewModel.Entries, Mode=OneWay}"
+                SelectionMode="None">
+                <ListView.Resources>
+                    <SolidColorBrush x:Key="ListViewItemBackgroundPointerOver" Color="Transparent" />
+                    <SolidColorBrush x:Key="ListViewItemBackgroundPressed" Color="Transparent" />
+                </ListView.Resources>
+            </ListView>
+
+            <StackPanel
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                IsHitTestVisible="False"
+                Spacing="{StaticResource IrisSpacingXs}"
+                Visibility="{x:Bind ViewModel.HasNoResults, Mode=OneWay, FallbackValue=Collapsed}">
+                <FontIcon
+                    FontSize="{StaticResource IrisIconLargeFontSize}"
+                    Foreground="{StaticResource IrisTextTertiaryBrush}"
+                    Glyph="&#xE721;"
+                    Style="{StaticResource IrisIconStyle}" />
+                <TextBlock
+                    HorizontalAlignment="Center"
+                    Style="{StaticResource IrisBodyEmphasizedTextStyle}"
+                    Text="{x:Bind ViewModel.EmptyTitle, Mode=OneWay, FallbackValue=''}" />
+                <TextBlock
+                    HorizontalAlignment="Center"
+                    Style="{StaticResource IrisCalloutTextStyle}"
+                    Text="{x:Bind ViewModel.EmptyMessage, Mode=OneWay, FallbackValue=''}"
+                    TextAlignment="Center"
+                    TextWrapping="Wrap" />
+            </StackPanel>
+
+            <ProgressRing
+                Width="32"
+                Height="32"
+                IsActive="{x:Bind ViewModel.IsLoading, Mode=OneWay, FallbackValue=False}" />
+        </Grid>
+    </Grid>
+</UserControl>

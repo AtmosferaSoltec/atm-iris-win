@@ -203,9 +203,9 @@
     <x:Double x:Key="IrisMiniTvMaxWidth">440</x:Double>
     <x:Double x:Key="IrisMediaStageMaxWidth">640</x:Double>
     <x:Double x:Key="IrisMediaStageButtonWidth">300</x:Double>
-    <x:Double x:Key="IrisAddButtonWidth">260</x:Double>
     <x:Double x:Key="IrisSlideCardMinWidth">220</x:Double>
-    <x:Double x:Key="IrisLibraryTileMinWidth">200</x:Double>
+    <x:Double x:Key="IrisLibraryThumbWidth">88</x:Double>
+    <x:Double x:Key="IrisPlayBadgeSize">24</x:Double>
     <x:Int32 x:Key="IrisThumbnailDecodeWidth">480</x:Int32>
     <x:Double x:Key="IrisDownloadBarWidth">120</x:Double>
     <x:Double x:Key="IrisBookCellMinWidth">150</x:Double>
@@ -227,9 +227,7 @@
     <x:Double x:Key="IrisPressedOpacity">0.85</x:Double>
     <x:Double x:Key="IrisFootnoteOpacity">0.6</x:Double>
     <GridLength x:Key="IrisColumnWidthWide">340</GridLength>
-    <GridLength x:Key="IrisColumnWidthNarrow">300</GridLength>
-    <!--  EN VIVO column of the console on a wide window (≥ IrisConsoleWideBreakpoint)  -->
-    <GridLength x:Key="IrisLiveColumnWidth">380</GridLength>
+    <GridLength x:Key="IrisColumnWidthNarrow">320</GridLength>
     <GridLength x:Key="IrisFieldIconColumnWidth">22</GridLength>
     <GridLength x:Key="IrisTopBarRowHeight">68</GridLength>
     <!--  Church screens (Home, Modules, People, Services, Times) and block timer  -->
@@ -273,7 +271,6 @@
     <Thickness x:Key="IrisDividerThickness">0,0,0,1</Thickness>
     <Thickness x:Key="IrisTopDividerThickness">0,1,0,0</Thickness>
     <x:Double x:Key="IrisAuthWideBreakpoint">1000</x:Double>
-    <x:Double x:Key="IrisConsoleWideBreakpoint">1400</x:Double>
     <!--  Módulos + Proyección side by side from this width; stacked below it.  -->
     <x:Double x:Key="IrisSettingsWideBreakpoint">1200</x:Double>
     <x:Double x:Key="IrisSettingsPageMaxWidth">1280</x:Double>

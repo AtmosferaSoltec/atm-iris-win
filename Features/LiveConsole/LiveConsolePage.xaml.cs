@@ -3,11 +3,13 @@ using System.ComponentModel;
 using System.Windows.Input;
 using CommunityToolkit.Mvvm.Input;
 using Iris.DesignSystem;
+using Iris.Features.AddToService;
 using Iris.Shell;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Navigation;
+using Windows.ApplicationModel.DataTransfer;
 using Windows.System;
 
 namespace Iris.Features.LiveConsole;
@@ -57,6 +59,26 @@ public sealed partial class LiveConsolePage : Page
 
     private void OnBackgroundChosen(object sender, RoutedEventArgs e) => BackgroundFlyout.Hide();
 
+    // Drop target of the library entries: the whole SERVICIO panel, empty or not. Reordering the list itself carries no payload.
+    private void OnServiceDragOver(object sender, DragEventArgs e)
+    {
+        if (e.DataView.Properties.ContainsKey(LibraryPanelView.DragKey))
+        {
+            e.AcceptedOperation = DataPackageOperation.Copy;
+            e.DragUIOverride.Caption = "Agregar al servicio";
+            e.Handled = true;
+        }
+    }
+
+    private void OnServiceDrop(object sender, DragEventArgs e)
+    {
+        if (e.DataView.Properties.TryGetValue(LibraryPanelView.DragKey, out var payload) && payload is LibraryEntryViewModel entry)
+        {
+            entry.Owner.AddCommand.Execute(entry);
+            e.Handled = true;
+        }
+    }
+
     // Keeps the live card visible in long chapters.
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
@@ -88,7 +110,7 @@ public sealed partial class LiveConsolePage : Page
         Add(VirtualKey.Space, VirtualKeyModifiers.None, ViewModel.TogglePlayPauseCommand);
         Add(VirtualKey.B, VirtualKeyModifiers.None, ViewModel.ToggleClearScreenCommand);
         Add(VirtualKey.B, VirtualKeyModifiers.Control, ViewModel.PresentBibleCommand);
-        Add(VirtualKey.N, VirtualKeyModifiers.Control, ViewModel.PresentAddToServiceCommand);
+        Add(VirtualKey.N, VirtualKeyModifiers.Control, new RelayCommand(() => LibraryPane.FocusSearch()));
         Add(VirtualKey.Delete, VirtualKeyModifiers.None, ViewModel.RemoveSelectedCommand);
         Add(VirtualKey.Z, VirtualKeyModifiers.Control, ViewModel.UndoRemovalCommand);
         Add(VirtualKey.D, VirtualKeyModifiers.Control, ViewModel.DuplicateSelectedCommand);
