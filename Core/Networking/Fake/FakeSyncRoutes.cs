@@ -89,12 +89,44 @@ public sealed partial class FakeIrisApiHandler
         return Ok(page, IrisJsonContext.Default.SyncPageDto);
     }
 
-    private static ChurchDto ToChurchDto(FakeChurchRow church) => new(
-        church.Id,
-        church.Name,
-        church.Timezone,
-        new ChurchModulesDto(church.Bible, church.Multimedia, church.TimeControl),
-        new StorageDto(church.UsedBytes, 5L * 1024 * 1024 * 1024),
-        church.CreatedAt,
-        church.UpdatedAt);
+    private ChurchDto ToChurchDto(FakeChurchRow church)
+    {
+        // Lo apagado para todo Iris queda apagado aunque la iglesia lo tenga encendido; su elección
+        // se conserva y vuelve sola cuando el módulo se habilita otra vez (api-contract §6).
+        var available = new ChurchModulesDto(_db.SystemBibleEnabled, true, true);
+        var effective = new ChurchModulesDto(church.Bible && available.Bible, church.Multimedia && available.Multimedia, church.TimeControl && available.TimeControl);
+        return new ChurchDto(
+            church.Id,
+            church.Name,
+            church.Timezone,
+            effective,
+            StorageOf(church.Id),
+            church.CreatedAt,
+            church.UpdatedAt,
+            available,
+            new ProjectionSettingsDto(church.ProjectionFontFamily, church.ProjectionFontSizePt, church.ProjectionDefaultBackgroundId));
+    }
+
+    /// <summary>What the church's live media takes, by section (api-contract §6).</summary>
+    private StorageDto StorageOf(Guid church)
+    {
+        long music = 0, backgrounds = 0, media = 0;
+        foreach (var item in FakeRows.Live(_db, church, FakeKind.Media, IrisJsonContext.Default.MediaAssetDto))
+        {
+            if (item.Kind == "audio")
+            {
+                music += item.SizeBytes;
+            }
+            else if (item.IsBackground)
+            {
+                backgrounds += item.SizeBytes;
+            }
+            else
+            {
+                media += item.SizeBytes;
+            }
+        }
+
+        return new StorageDto(music + backgrounds + media, 5L * 1024 * 1024 * 1024, new StorageBreakdownDto(music, backgrounds, media));
+    }
 }

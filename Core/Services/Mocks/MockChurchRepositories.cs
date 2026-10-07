@@ -29,6 +29,11 @@ public sealed class InMemoryChurchStore
 
     public ChurchModules Modules { get; set; }
 
+    /// <summary>Modules that exist in Iris (api-contract §6); everything in design data.</summary>
+    public ChurchModules AvailableModules { get; set; } = ChurchModules.All;
+
+    public ProjectionSettings Projection { get; set; } = ProjectionSettings.Default;
+
     public List<ServiceType> Types { get; }
 
     public List<Person> People { get; }
@@ -77,9 +82,26 @@ public sealed class InMemoryChurchStore
 
 public sealed class MockModuleSettingsRepository(InMemoryChurchStore store) : IModuleSettingsRepository
 {
-    public Task<ChurchModules> ModulesAsync() => store.Run(() => store.Modules);
+    public Task<ChurchModules> ModulesAsync() => store.Run(() => store.Modules.Effective(store.AvailableModules));
 
-    public Task SaveAsync(ChurchModules modules) => store.Run(() => store.Modules = modules);
+    public Task<ChurchModules> AvailableModulesAsync() => store.Run(() => store.AvailableModules);
+
+    public Task SaveAsync(ChurchModules modules) => store.Run(() =>
+    {
+        // A module switched off for all of Iris keeps the choice it had.
+        var available = store.AvailableModules;
+        store.Modules = new ChurchModules(
+            available.Bible ? modules.Bible : store.Modules.Bible,
+            available.Multimedia ? modules.Multimedia : store.Modules.Multimedia,
+            available.TimeControl ? modules.TimeControl : store.Modules.TimeControl);
+    });
+}
+
+public sealed class MockProjectionSettingsRepository(InMemoryChurchStore store) : IProjectionSettingsRepository
+{
+    public Task<ProjectionSettings> SettingsAsync() => store.Run(() => store.Projection);
+
+    public Task SaveAsync(ProjectionSettings settings) => store.Run(() => store.Projection = settings);
 }
 
 public sealed class MockServiceTypeRepository(InMemoryChurchStore store) : IServiceTypeRepository
@@ -113,17 +135,8 @@ public sealed class MockPeopleRepository(InMemoryChurchStore store) : IPeopleRep
 
     public Task DeleteAsync(Guid id) => store.Run(() =>
     {
+        // Records keep id + name; templates carry no leader (api-contract §8).
         store.People.RemoveAll(p => p.Id == id);
-
-        // Records keep id + name; templates stop suggesting the person.
-        for (var i = 0; i < store.Types.Count; i++)
-        {
-            var type = store.Types[i];
-            if (type.Blocks.Any(b => b.DefaultPersonId == id))
-            {
-                store.Types[i] = type with { Blocks = type.Blocks.Select(b => b.DefaultPersonId == id ? b with { DefaultPersonId = null } : b).ToList() };
-            }
-        }
     });
 }
 

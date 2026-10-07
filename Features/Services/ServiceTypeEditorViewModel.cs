@@ -11,15 +11,6 @@ using Iris.Core.Services;
 
 namespace Iris.Features.Services;
 
-/// <summary>An entry of a leader menu: nobody, a person, or "Agregar persona…".</summary>
-public sealed record LeaderOption(Guid? PersonId, string Name, bool IsAddAction = false)
-{
-    public static readonly LeaderOption Nobody = new(null, "Sin responsable");
-    public static readonly LeaderOption AddPerson = new(null, "Agregar persona…", IsAddAction: true);
-
-    public override string ToString() => Name;
-}
-
 public sealed partial class ColorOptionViewModel(string hex, string name, ServiceTypeEditorViewModel owner) : ObservableObject
 {
     public string Hex { get; } = hex;
@@ -47,25 +38,25 @@ public sealed partial class WeekdayOptionViewModel(int weekday, ServiceTypeEdito
     public partial bool IsSelected { get; set; }
 }
 
-/// <summary>An editable block row: name, minutes (1…240) and suggested leader.</summary>
+/// <summary>
+/// An editable block row: name and minutes (1…240). No responsible person here (api-contract §9):
+/// who leads rotates weekly and is recorded on each service instead, not suggested by the template.
+/// </summary>
 public sealed partial class BlockDraftViewModel : ObservableObject
 {
     private readonly ServiceTypeEditorViewModel _owner;
 
-    public BlockDraftViewModel(Guid id, string name, int minutes, Guid? personId, ServiceTypeEditorViewModel owner)
+    public BlockDraftViewModel(Guid id, string name, int minutes, ServiceTypeEditorViewModel owner)
     {
         Id = id;
         _owner = owner;
         Name = name;
         Minutes = minutes;
-        Leader = owner.LeaderFor(personId);
     }
 
     public Guid Id { get; }
 
     public ServiceTypeEditorViewModel Owner => _owner;
-
-    public IReadOnlyList<LeaderOption> LeaderOptions => _owner.LeaderOptions;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasNameError))]
@@ -75,9 +66,6 @@ public sealed partial class BlockDraftViewModel : ObservableObject
 
     [ObservableProperty]
     public partial double Minutes { get; set; }
-
-    [ObservableProperty]
-    public partial LeaderOption? Leader { get; set; }
 
     public int WholeMinutes => double.IsNaN(Minutes) ? 1 : (int)Math.Clamp(Math.Round(Minutes), 1, 240);
 
@@ -93,23 +81,6 @@ public sealed partial class BlockDraftViewModel : ObservableObject
 
         _owner.BlocksChanged();
     }
-
-    partial void OnLeaderChanged(LeaderOption? oldValue, LeaderOption? newValue)
-    {
-        if (newValue is { IsAddAction: true })
-        {
-            // "Agregar persona…" is an action, not a choice: keep the previous leader and ask for a name.
-            Leader = oldValue;
-            _owner.BeginAddPerson(this);
-        }
-    }
-
-    public void RefreshLeaderOptions()
-    {
-        var id = Leader?.PersonId;
-        OnPropertyChanged(nameof(LeaderOptions));
-        Leader = _owner.LeaderFor(id);
-    }
 }
 
 /// <summary>
@@ -121,18 +92,13 @@ public sealed partial class ServiceTypeEditorViewModel : ObservableObject
     private readonly ServiceType? _original;
     private readonly IReadOnlyList<ServiceType> _allTypes;
     private readonly IServiceTypeRepository _types;
-    private readonly IPeopleRepository _peopleRepository;
     private readonly Action<EditorResult?> _onDone;
-    private List<Person> _people;
-    private BlockDraftViewModel? _addingPersonFor;
 
     public ServiceTypeEditorViewModel(
         ServiceType? original,
         IReadOnlyList<ServiceType> allTypes,
         ChurchModules modules,
-        IReadOnlyList<Person> people,
         IServiceTypeRepository types,
-        IPeopleRepository peopleRepository,
         Action<EditorResult?> onDone,
         bool canEdit = true)
     {
@@ -140,11 +106,8 @@ public sealed partial class ServiceTypeEditorViewModel : ObservableObject
         _original = original;
         _allTypes = allTypes;
         _types = types;
-        _peopleRepository = peopleRepository;
         _onDone = onDone;
-        _people = people.OrderBy(p => p.Name, StringComparer.Create(Spanish.Culture, ignoreCase: true)).ToList();
         Modules = modules;
-        LeaderOptions = BuildLeaderOptions();
 
         ColorOptions = ServicePalette.Colors.Select(c => new ColorOptionViewModel(c.Hex, c.Name, this)).ToList();
         WeekdayOptions = Enumerable.Range(1, 7).Select(d => new WeekdayOptionViewModel(d, this)).ToList();
@@ -156,7 +119,7 @@ public sealed partial class ServiceTypeEditorViewModel : ObservableObject
         Time = original?.Schedule is { } s ? new TimeSpan(s.Hour, s.Minute, 0) : new TimeSpan(10, 0, 0);
         foreach (var block in original?.Blocks ?? [])
         {
-            Blocks.Add(new BlockDraftViewModel(block.Id, block.Name, block.PlannedMinutes, block.DefaultPersonId, this));
+            Blocks.Add(new BlockDraftViewModel(block.Id, block.Name, block.PlannedMinutes, this));
         }
 
         TracksTime = Blocks.Count > 0;
@@ -185,8 +148,6 @@ public sealed partial class ServiceTypeEditorViewModel : ObservableObject
     public IReadOnlyList<ColorOptionViewModel> ColorOptions { get; }
 
     public IReadOnlyList<WeekdayOptionViewModel> WeekdayOptions { get; }
-
-    public IReadOnlyList<LeaderOption> LeaderOptions { get; private set; }
 
     // ===== Draft =====
 
@@ -242,17 +203,7 @@ public sealed partial class ServiceTypeEditorViewModel : ObservableObject
 
     public string DeleteTitle => $"¿Eliminar {_original?.Name ?? Name}?";
 
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsModalOpen))]
-    public partial bool IsAddingPerson { get; set; }
-
-    [ObservableProperty]
-    public partial string NewPersonName { get; set; } = string.Empty;
-
-    [ObservableProperty]
-    public partial string? NewPersonError { get; set; }
-
-    public bool IsModalOpen => IsConfirmingBlockRemoval || IsConfirmingDelete || IsAddingPerson;
+    public bool IsModalOpen => IsConfirmingBlockRemoval || IsConfirmingDelete;
 
     // ===== Draft changes =====
 
@@ -323,7 +274,7 @@ public sealed partial class ServiceTypeEditorViewModel : ObservableObject
     private void CancelBlockRemoval() => IsConfirmingBlockRemoval = false;
 
     [RelayCommand]
-    private void AddBlock() => Blocks.Add(new BlockDraftViewModel(Guid.NewGuid(), "Nuevo bloque", 10, null, this));
+    private void AddBlock() => Blocks.Add(new BlockDraftViewModel(Guid.NewGuid(), "Nuevo bloque", 10, this));
 
     [RelayCommand]
     private void RemoveBlock(BlockDraftViewModel block) => Blocks.Remove(block);
@@ -343,74 +294,6 @@ public sealed partial class ServiceTypeEditorViewModel : ObservableObject
         OnPropertyChanged(nameof(TotalText));
         Validate();
     }
-
-    // ===== Add person (from a leader menu) =====
-
-    public void BeginAddPerson(BlockDraftViewModel block)
-    {
-        _addingPersonFor = block;
-        NewPersonName = string.Empty;
-        NewPersonError = null;
-        IsAddingPerson = true;
-    }
-
-    partial void OnNewPersonNameChanged(string value) => NewPersonError = null;
-
-    [RelayCommand]
-    private void CancelAddPerson()
-    {
-        IsAddingPerson = false;
-        _addingPersonFor = null;
-    }
-
-    /// <summary>If the name already exists, that person is used.</summary>
-    [RelayCommand]
-    private async Task ConfirmAddPersonAsync()
-    {
-        var key = NameKey.For(NewPersonName);
-        if (key.Length == 0)
-        {
-            NewPersonError = "Escribe un nombre.";
-            return;
-        }
-
-        var person = _people.FirstOrDefault(p => NameKey.For(p.Name) == key);
-        if (person is null)
-        {
-            try
-            {
-                person = await _peopleRepository.AddAsync(NewPersonName.Trim());
-            }
-            catch
-            {
-                NewPersonError = "Algo salió mal. Inténtalo de nuevo.";
-                return;
-            }
-
-            _people = [.. _people, person];
-            _people.Sort((a, b) => string.Compare(a.Name, b.Name, Spanish.Culture, System.Globalization.CompareOptions.IgnoreCase));
-            LeaderOptions = BuildLeaderOptions();
-            OnPropertyChanged(nameof(LeaderOptions));
-            foreach (var block in Blocks)
-            {
-                block.RefreshLeaderOptions();
-            }
-        }
-
-        if (_addingPersonFor is { } target)
-        {
-            target.Leader = LeaderFor(person.Id);
-        }
-
-        IsAddingPerson = false;
-        _addingPersonFor = null;
-    }
-
-    public LeaderOption LeaderFor(Guid? personId) =>
-        personId is { } id ? LeaderOptions.FirstOrDefault(o => o.PersonId == id) ?? LeaderOption.Nobody : LeaderOption.Nobody;
-
-    private IReadOnlyList<LeaderOption> BuildLeaderOptions() =>
-        [LeaderOption.Nobody, .. _people.Select(p => new LeaderOption(p.Id, p.Name)), LeaderOption.AddPerson];
 
     // ===== Save / delete =====
 
@@ -446,7 +329,7 @@ public sealed partial class ServiceTypeEditorViewModel : ObservableObject
     public ServiceType BuildType()
     {
         var blocks = ShowsTimeControl
-            ? (TracksTime ? Blocks.Select(b => new BlockTemplate(b.Id, b.Name.Trim(), b.WholeMinutes, b.Leader?.PersonId)).ToList() : [])
+            ? (TracksTime ? Blocks.Select(b => new BlockTemplate(b.Id, b.Name.Trim(), b.WholeMinutes)).ToList() : [])
             : _original?.Blocks ?? [];
         var schedule = HasSchedule ? new ServiceSchedule(Weekday, Time.Hours, Time.Minutes) : null;
         return new ServiceType(_original?.Id ?? Guid.NewGuid(), Name.Trim(), Color, schedule, blocks);

@@ -16,6 +16,49 @@ public sealed record Person(Guid Id, string Name, int BlockCount = 0)
 public sealed record ChurchModules(bool Bible, bool Multimedia, bool TimeControl)
 {
     public static readonly ChurchModules All = new(true, true, true);
+
+    /// <summary>What the church actually sees: its own choice, minus whatever Iris has switched off
+    /// for every church (api-contract §6).</summary>
+    public ChurchModules Effective(ChurchModules available) => new(
+        Bible && available.Bible,
+        Multimedia && available.Multimedia,
+        TimeControl && available.TimeControl);
+}
+
+/// <summary>
+/// One of the 10 typefaces Iris offers for the projected lyrics (api-contract §6). The real font
+/// behind each key is a platform concern (<c>Shared/Projection/ProjectionFonts.cs</c>); this is the
+/// key that travels over the wire and syncs, never a font name.
+/// </summary>
+public enum ProjectionFontFamily
+{
+    System,
+    SystemRounded,
+    Serif,
+    Georgia,
+    AvenirNext,
+    Futura,
+    GillSans,
+    Optima,
+    Baskerville,
+    Palatino,
+}
+
+/// <summary>
+/// How the projected lyrics look, same for every console of the church (api-contract §6).
+/// <see cref="FontSizePt"/> is measured on a 1920-wide screen; every surface scales it by
+/// <c>actualWidth / 1920</c>. <see cref="DefaultBackgroundId"/> is a gradient key or a media asset
+/// id shown while nothing is chosen; null is plain black. Not validated against anything: a
+/// dangling id just falls back to black.
+/// </summary>
+public sealed record ProjectionSettings(ProjectionFontFamily FontFamily, int FontSizePt, string? DefaultBackgroundId)
+{
+    public static readonly ProjectionSettings Default = new(ProjectionFontFamily.System, 88, null);
+
+    public static readonly IReadOnlyList<int> SuggestedFontSizes = [56, 64, 72, 80, 88, 96, 112, 128, 144];
+
+    public const int MinFontSizePt = 40;
+    public const int MaxFontSizePt = 200;
 }
 
 /// <summary>Fixed weekly schedule. <see cref="Weekday"/>: 1 = Sunday … 7 = Saturday.</summary>
@@ -24,7 +67,9 @@ public sealed record ServiceSchedule(int Weekday, int Hour, int Minute)
     public DayOfWeek DayOfWeek => (DayOfWeek)(Weekday - 1);
 }
 
-public sealed record BlockTemplate(Guid Id, string Name, int PlannedMinutes, Guid? DefaultPersonId);
+// api-contract §9: no responsible person on the template — it rotates weekly and is recorded on
+// each service instead.
+public sealed record BlockTemplate(Guid Id, string Name, int PlannedMinutes);
 
 /// <summary>A kind of service ("Culto general") with an optional schedule and time blocks.</summary>
 public sealed record ServiceType(Guid Id, string Name, string Color, ServiceSchedule? Schedule, IReadOnlyList<BlockTemplate> Blocks)

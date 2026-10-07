@@ -52,6 +52,7 @@ public static class AppDependencies
         // One shared store behind the four church repositories, so every screen sees the same data.
         services.AddSingleton<InMemoryChurchStore>();
         services.AddSingleton<IModuleSettingsRepository, MockModuleSettingsRepository>();
+        services.AddSingleton<IProjectionSettingsRepository, MockProjectionSettingsRepository>();
         services.AddSingleton<IServiceTypeRepository, MockServiceTypeRepository>();
         services.AddSingleton<IPeopleRepository, MockPeopleRepository>();
         services.AddSingleton<ITimeRecordRepository, MockTimeRecordRepository>();
@@ -79,6 +80,7 @@ public static class AppDependencies
         services.AddSingleton<IMediaPlaybackService, LiveMediaPlaybackService>();
         services.AddSingleton<LiveData>();
         services.AddSingleton<IModuleSettingsRepository, LiveModuleSettingsRepository>();
+        services.AddSingleton<IProjectionSettingsRepository, LiveProjectionSettingsRepository>();
         services.AddSingleton<IServiceTypeRepository, LiveServiceTypeRepository>();
         services.AddSingleton<IPeopleRepository, LivePeopleRepository>();
         services.AddSingleton<ITimeRecordRepository, LiveTimeRecordRepository>();
@@ -133,7 +135,8 @@ public static class AppDependencies
     {
         services.AddSingleton<IConnectivity, NetworkConnectivity>();
         services.AddSingleton(sp => new LocalStore(
-            AppPaths.File(settings.DataMode == DataMode.Fake ? "iris-fake.db" : "iris.db"),
+            // The fake copy follows the fake API's schema (FakeDb.CurrentSchema): a new file when that resets.
+            AppPaths.File(settings.DataMode == DataMode.Fake ? $"iris-fake-v{FakeDb.CurrentSchema}.db" : "iris.db"),
             sp.GetRequiredService<IUiDispatcher>()));
         services.AddSingleton<Outbox>();
         services.AddSingleton<SyncEngine>();
@@ -200,6 +203,7 @@ public static class AppDependencies
         services.AddTransient<HomeViewModel>();
         services.AddTransient<LiveConsoleViewModel>();
         services.AddTransient<ModulesViewModel>();
+        services.AddTransient<ProjectionSettingsViewModel>();
         services.AddTransient<PeopleViewModel>();
         services.AddTransient<ServiceTypesViewModel>();
         services.AddTransient<TimesViewModel>();

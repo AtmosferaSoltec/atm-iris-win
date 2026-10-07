@@ -12,9 +12,9 @@ public class BlockTimerTests
 
     private static List<BlockTemplate> Template() =>
     [
-        new(Guid.NewGuid(), "Bienvenida", 10, Carlos),
-        new(Guid.NewGuid(), "Alabanzas", 15, Ana),
-        new(Guid.NewGuid(), "Prédica", 40, null),
+        new(Guid.NewGuid(), "Bienvenida", 10),
+        new(Guid.NewGuid(), "Alabanzas", 15),
+        new(Guid.NewGuid(), "Prédica", 40),
     ];
 
     [Theory]
@@ -156,7 +156,7 @@ public class BlockTimerTests
     }
 
     [Fact]
-    public void UpdatedTemplate_follows_today_without_skipped_and_assigns_leader_to_new_blocks()
+    public void UpdatedTemplate_follows_today_without_skipped_and_carries_no_leader()
     {
         var original = Template();
         var timer = new BlockTimer(original);
@@ -165,12 +165,11 @@ public class BlockTimerTests
         timer.Start(Ana, T0);
         var added = timer.AddBlock("Santa Cena", 20, Ana);
 
-        var updated = timer.UpdatedTemplate(original);
+        var updated = timer.UpdatedTemplate();
 
         Assert.Equal(["Bienvenida", "Santa Cena", "Alabanzas"], updated.Select(t => t.Name));
         Assert.Equal(15, updated[0].PlannedMinutes);
-        Assert.Equal(Carlos, updated[0].DefaultPersonId); // keeps the template's suggested leader
-        Assert.Equal(Ana, updated.Single(t => t.Id == added.Id).DefaultPersonId);
+        Assert.Equal(20, updated.Single(t => t.Id == added.Id).PlannedMinutes);
     }
 
     [Fact]

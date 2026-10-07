@@ -55,7 +55,6 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <FontIcon
                     Foreground="{StaticResource IrisTextTertiaryBrush}"
@@ -87,15 +86,8 @@
                         Style="{StaticResource IrisCaptionTextStyle}"
                         Text="min" />
                 </StackPanel>
-                <ComboBox
-                    Grid.Column="3"
-                    Width="{StaticResource IrisLeaderMenuWidth}"
-                    VerticalAlignment="Center"
-                    AutomationProperties.Name="Responsable"
-                    ItemsSource="{x:Bind LeaderOptions, Mode=OneWay}"
-                    SelectedItem="{x:Bind Leader, Mode=TwoWay}" />
                 <Button
-                    Grid.Column="4"
+                    Grid.Column="3"
                     Width="32"
                     Height="32"
                     VerticalAlignment="Center"
@@ -216,7 +208,7 @@
                         </Grid.ColumnDefinitions>
                         <StackPanel Spacing="2">
                             <TextBlock Style="{StaticResource IrisBodyTextStyle}" Text="Controlar el tiempo de este servicio" />
-                            <TextBlock Style="{StaticResource IrisCalloutTextStyle}" Text="Divide el servicio en bloques con un tiempo previsto y un responsable." />
+                            <TextBlock Style="{StaticResource IrisCalloutTextStyle}" Text="Divide el servicio en bloques con un tiempo previsto. El responsable se elige en cada servicio." />
                         </StackPanel>
                         <ToggleSwitch
                             x:Name="TracksTimeSwitch"
@@ -329,36 +321,5 @@
             </StackPanel>
         </controls:IrisModal>
 
-        <controls:IrisModal
-            Grid.RowSpan="2"
-            CloseCommand="{x:Bind ViewModel.CancelAddPersonCommand, Mode=OneWay}"
-            IsOpen="{x:Bind ViewModel.IsAddingPerson, Mode=OneWay, FallbackValue=False}"
-            PanelWidth="{StaticResource IrisConfirmModalWidth}">
-            <StackPanel Padding="{StaticResource IrisPaddingXl}" Spacing="{StaticResource IrisSpacingLg}">
-                <TextBlock Style="{StaticResource IrisTitleTextStyle}" Text="Agregar persona" />
-                <controls:IrisTextField
-                    ErrorMessage="{x:Bind ViewModel.NewPersonError, Mode=OneWay}"
-                    Glyph="&#xE8FA;"
-                    Kind="Name"
-                    Placeholder="Nombre y apellido"
-                    Submitted="OnAddPersonSubmitted"
-                    Text="{x:Bind ViewModel.NewPersonName, Mode=TwoWay}" />
-                <Grid ColumnSpacing="{StaticResource IrisSpacingSm}">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <Button
-                        Command="{x:Bind ViewModel.CancelAddPersonCommand, Mode=OneWay}"
-                        Content="Cancelar"
-                        Style="{StaticResource IrisGlassButtonStyle}" />
-                    <Button
-                        Grid.Column="1"
-                        Command="{x:Bind ViewModel.ConfirmAddPersonCommand, Mode=OneWay}"
-                        Content="Agregar"
-                        Style="{StaticResource IrisPrimaryButtonStyle}" />
-                </Grid>
-            </StackPanel>
-        </controls:IrisModal>
     </Grid>
 </UserControl>

@@ -7,7 +7,16 @@ namespace Iris.Core.Networking.Dto;
 
 public sealed record ChurchModulesDto(bool Bible, bool Multimedia, bool TimeControl);
 
-public sealed record StorageDto(long UsedBytes, long QuotaBytes);
+/// <summary>api-contract §6: typeface, size (referred to a 1920-wide screen) and the background shown
+/// when none is chosen. <see cref="FontFamily"/> is one of 10 keys, never a font name.</summary>
+public sealed record ProjectionSettingsDto(string FontFamily, int FontSizePt, string? DefaultBackgroundId);
+
+/// <summary>api-contract §6: one quota per church, shared by Música, Fondos and Multimedia. <see cref="Breakdown"/>
+/// is nullable only so a copy saved before it existed still decodes.</summary>
+public sealed record StorageDto(long UsedBytes, long QuotaBytes, StorageBreakdownDto? Breakdown = null);
+
+/// <summary>What each web section takes: audio; images and videos marked as background; the rest.</summary>
+public sealed record StorageBreakdownDto(long MusicBytes, long BackgroundBytes, long MediaBytes);
 
 public sealed record ChurchDto(
     Guid Id,
@@ -16,7 +25,10 @@ public sealed record ChurchDto(
     ChurchModulesDto Modules,
     StorageDto Storage,
     DateTimeOffset CreatedAt,
-    DateTimeOffset UpdatedAt);
+    DateTimeOffset UpdatedAt,
+    // Nullable only so a reply from an older server still decodes; `Mapping` fills the defaults.
+    ChurchModulesDto? AvailableModules = null,
+    ProjectionSettingsDto? Projection = null);
 
 public sealed record ChurchPatchDto(string? Name, string? Timezone);
 
@@ -28,9 +40,11 @@ public sealed record PersonRenameDto(string Name);
 
 public sealed record ScheduleDto(int Weekday, int Hour, int Minute);
 
-public sealed record BlockTemplateDto(Guid Id, string Name, int PlannedMinutes, Guid? DefaultPersonId);
+// api-contract §9: no responsible person on the template anymore — it rotates weekly and is
+// recorded on each service instead.
+public sealed record BlockTemplateDto(Guid Id, string Name, int PlannedMinutes);
 
-public sealed record BlockTemplateInputDto(Guid? Id, string Name, int PlannedMinutes, Guid? DefaultPersonId);
+public sealed record BlockTemplateInputDto(Guid? Id, string Name, int PlannedMinutes);
 
 public sealed record ServiceTypeDto(
     Guid Id,
@@ -51,7 +65,6 @@ public sealed record SongDto(
     Guid Id,
     string Title,
     string Author,
-    string? Copyright,
     IReadOnlyList<SongSectionDto> Sections,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt);
@@ -135,15 +148,9 @@ public sealed record BibleChapterDto(string BookId, int Chapter, IReadOnlyList<B
 
 public sealed record SongSectionInputDto(string? Label, string Text);
 
-public sealed record SongInputDto(string Title, string Author, string? Copyright, IReadOnlyList<SongSectionInputDto> Sections);
+public sealed record SongInputDto(string Title, string Author, IReadOnlyList<SongSectionInputDto> Sections);
 
-public sealed record SongCreateDto(Guid? Id, string Title, string Author, string? Copyright, IReadOnlyList<SongSectionInputDto> Sections);
-
-public sealed record SongImportDto(IReadOnlyList<SongInputDto> Songs);
-
-public sealed record SkippedSongDto(string Title, string Reason);
-
-public sealed record SongImportResultDto(IReadOnlyList<SongSummaryDto> Created, IReadOnlyList<SkippedSongDto> Skipped);
+public sealed record SongCreateDto(Guid? Id, string Title, string Author, IReadOnlyList<SongSectionInputDto> Sections);
 
 public sealed record MediaUploadRequestDto(string Kind, string FileName, string ContentType, long SizeBytes);
 

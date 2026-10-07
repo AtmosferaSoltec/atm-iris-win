@@ -14,7 +14,7 @@ public sealed record BibleBook(string Id, string Name, Testament Testament, int 
 
 public sealed record BibleVerse(int Number, string Text);
 
-public sealed record LyricSheet(Guid Id, string Title, string Author, IReadOnlyList<Slide> Sections, string? Copyright = null)
+public sealed record LyricSheet(Guid Id, string Title, string Author, IReadOnlyList<Slide> Sections)
 {
     public string FirstLine
     {
@@ -62,6 +62,7 @@ public sealed record MediaAsset(Guid Id, MediaKind Kind, string Title, string Su
     /// <summary>Images only: offered in the background picker.</summary>
     public bool IsBackground { get; init; }
 
-    /// <summary>Only files that are on this PC (or design placeholders) can be added to a service.</summary>
+    /// <summary>The file is on this PC (or it is design data): it can play or go to the TV. Music and videos can be
+    /// added to a service before that; adding them starts the download.</summary>
     public bool IsAvailable => Availability is MediaAvailability.Placeholder or MediaAvailability.Ready;
 }

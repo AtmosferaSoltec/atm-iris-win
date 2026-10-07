@@ -20,14 +20,14 @@ public static partial class Mapping
         dto.Name,
         dto.Color,
         dto.Schedule is { } s ? new ServiceSchedule(s.Weekday, s.Hour, s.Minute) : null,
-        dto.Blocks.Select(b => new BlockTemplate(b.Id, b.Name, b.PlannedMinutes, b.DefaultPersonId)).ToList());
+        dto.Blocks.Select(b => new BlockTemplate(b.Id, b.Name, b.PlannedMinutes)).ToList());
 
     public static ServiceTypeDto ToDto(ServiceType type, DateTimeOffset createdAt, DateTimeOffset updatedAt) => new(
         type.Id,
         type.Name,
         type.Color,
         type.Schedule is { } s ? new ScheduleDto(s.Weekday, s.Hour, s.Minute) : null,
-        type.Blocks.Select(b => new BlockTemplateDto(b.Id, b.Name, b.PlannedMinutes, b.DefaultPersonId)).ToList(),
+        type.Blocks.Select(b => new BlockTemplateDto(b.Id, b.Name, b.PlannedMinutes)).ToList(),
         createdAt,
         updatedAt);
 
@@ -35,7 +35,7 @@ public static partial class Mapping
         type.Name,
         type.Color,
         type.Schedule is { } s ? new ScheduleDto(s.Weekday, s.Hour, s.Minute) : null,
-        type.Blocks.Select(b => new BlockTemplateInputDto(b.Id, b.Name, b.PlannedMinutes, b.DefaultPersonId)).ToList());
+        type.Blocks.Select(b => new BlockTemplateInputDto(b.Id, b.Name, b.PlannedMinutes)).ToList());
 
     // ----- Songs -----
 
@@ -43,14 +43,12 @@ public static partial class Mapping
         dto.Id,
         dto.Title,
         dto.Author,
-        dto.Sections.Select(s => new Slide(s.Id, s.Label, new TextContent(s.Text))).ToList(),
-        string.IsNullOrWhiteSpace(dto.Copyright) ? null : dto.Copyright);
+        dto.Sections.Select(s => new Slide(s.Id, s.Label, new TextContent(s.Text))).ToList());
 
     public static SongDto ToDto(LyricSheet sheet, DateTimeOffset now) => new(
         sheet.Id,
         sheet.Title,
         sheet.Author,
-        sheet.Copyright,
         sheet.Sections
             .Select(s => new SongSectionDto(s.Id, s.Label, (s.Content as TextContent)?.Body ?? string.Empty))
             .ToList(),
@@ -134,6 +132,36 @@ public static partial class Mapping
     };
 
     /// <summary>A library entry with the state of its cached file (nothing to show until it is on this PC).</summary>
+    // ----- Church: modules, system availability and projection settings (api-contract §6) -----
+
+    private static readonly Dictionary<string, ProjectionFontFamily> ProjectionFontKeys = new()
+    {
+        ["system"] = ProjectionFontFamily.System,
+        ["systemRounded"] = ProjectionFontFamily.SystemRounded,
+        ["serif"] = ProjectionFontFamily.Serif,
+        ["georgia"] = ProjectionFontFamily.Georgia,
+        ["avenirNext"] = ProjectionFontFamily.AvenirNext,
+        ["futura"] = ProjectionFontFamily.Futura,
+        ["gillSans"] = ProjectionFontFamily.GillSans,
+        ["optima"] = ProjectionFontFamily.Optima,
+        ["baskerville"] = ProjectionFontFamily.Baskerville,
+        ["palatino"] = ProjectionFontFamily.Palatino,
+    };
+
+    /// <summary>An unknown key (an older or newer server) falls back to the recommended one.</summary>
+    public static ProjectionFontFamily ParseFontFamily(string? value) =>
+        value is not null && ProjectionFontKeys.TryGetValue(value, out var family) ? family : ProjectionFontFamily.System;
+
+    public static string ToWire(ProjectionFontFamily family) =>
+        ProjectionFontKeys.First(kv => kv.Value == family).Key;
+
+    public static ProjectionSettings ToModel(ProjectionSettingsDto? dto) => dto is null
+        ? ProjectionSettings.Default
+        : new ProjectionSettings(ParseFontFamily(dto.FontFamily), dto.FontSizePt, dto.DefaultBackgroundId);
+
+    public static ProjectionSettingsDto ToDto(ProjectionSettings settings) =>
+        new(ToWire(settings.FontFamily), settings.FontSizePt, settings.DefaultBackgroundId);
+
     public static MediaAsset ToModel(MediaAssetDto dto, Iris.Core.Media.MediaFileState state)
     {
         var kind = ParseKind(dto.Kind);

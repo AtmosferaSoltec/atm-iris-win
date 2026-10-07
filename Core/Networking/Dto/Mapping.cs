@@ -8,36 +8,19 @@ namespace Iris.Core.Networking.Dto;
 /// <summary>DTO ⇄ app models. Unknown enum values from newer servers fall back to the safest option.</summary>
 public static partial class Mapping
 {
-    private static readonly Dictionary<string, Permission> PermissionNames = new()
-    {
-        ["church.manage"] = Permission.ChurchManage,
-        ["modules.manage"] = Permission.ModulesManage,
-        ["members.manage"] = Permission.MembersManage,
-        ["songs.manage"] = Permission.SongsManage,
-        ["media.manage"] = Permission.MediaManage,
-        ["serviceTypes.manage"] = Permission.ServiceTypesManage,
-        ["people.manage"] = Permission.PeopleManage,
-        ["records.write"] = Permission.RecordsWrite,
-        ["records.manage"] = Permission.RecordsManage,
-    };
-
-    public static Role ParseRole(string? value) => value switch
-    {
-        "owner" => Role.Owner,
-        "admin" => Role.Admin,
-        _ => Role.Operator,
-    };
-
-    public static string ToWire(Role role) => role.ToString().ToLowerInvariant();
-
+    /// <summary>
+    /// One account per church (api-contract §3): whoever signs in can do everything, and there is
+    /// no church to switch to. Ignores whatever an older server still sends for role/permissions/
+    /// churches, same as every other client.
+    /// </summary>
     public static UserSession ToSession(SessionViewDto dto) => new(
         dto.User.Id,
         dto.User.Email,
         dto.User.FullName,
         new ChurchIdentity(dto.Church.Id, dto.Church.Name, dto.Church.Timezone),
-        ParseRole(dto.Role),
-        dto.Permissions.Where(PermissionNames.ContainsKey).Select(p => PermissionNames[p]).ToHashSet(),
-        dto.Churches.Select(c => new ChurchSummary(c.Id, c.Name, ParseRole(c.Role))).ToList(),
+        Role.Owner,
+        Enum.GetValues<Permission>().ToHashSet(),
+        [],
         dto.Session.Id);
 
     public static ChurchModules ToModel(ChurchModulesDto dto) => new(dto.Bible, dto.Multimedia, dto.TimeControl);

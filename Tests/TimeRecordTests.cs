@@ -79,8 +79,9 @@ public class TimeRecordTests
                 .Select(b => b.Id == block.Id ? b with { ActualSeconds = 1234, Status = BlockStatus.Adjusted, PersonId = other.Id, PersonName = other.Name } : b)
                 .ToList(),
         };
-        await records.SaveAsync(edited);
+        // Saving nudges a sync in the background: clear first so no PATCH can slip by uncounted.
         s.Stack.Fake.Calls.Clear();
+        await records.SaveAsync(edited);
         await s.Engine.SyncNowAsync(SyncReason.Write);
 
         var writes = s.Stack.Fake.Calls.Where(c => c.StartsWith("PATCH")).ToList();
@@ -133,29 +134,6 @@ public class TimeRecordTests
         Assert.Equal(0, await s.Outbox.CountAsync());
     }
 
-    [Fact]
-    public async Task Operator_can_save_records_but_not_adjust_them()
-    {
-        using var s = await ReadyAsync("operador@vidanueva.org");
-        var records = new LiveTimeRecordRepository(s.Data);
-        var typeId = (await new LiveServiceTypeRepository(s.Data).ServiceTypesAsync()).First().Id;
-        var created = NewRecord(new DateTime(2026, 10, 4, 10, 0, 0), typeId, null, null);
-        await records.SaveAsync(created);
-        await s.Engine.SyncNowAsync(SyncReason.Write);
-        Assert.Single(ServerRecords(s), r => r.Id == created.Id);
-
-        var discarded = new List<DiscardedWrite>();
-        s.Engine.WriteDiscarded += (_, d) => discarded.Add(d);
-        await records.SaveAsync(created with { Blocks = created.Blocks.Select(b => b with { ActualSeconds = b.ActualSeconds + 60 }).ToList() });
-        await s.Engine.SyncNowAsync(SyncReason.Write);
-        await s.Engine.SyncNowAsync(SyncReason.Manual);
-
-        Assert.NotEmpty(discarded);
-        Assert.All(discarded, d => Assert.Equal(403, d.StatusCode));
-        // The copy heals back to what the server holds.
-        var local = (await records.RecordsAsync()).Single(r => r.Id == created.Id);
-        Assert.Equal(640, local.Blocks[0].ActualSeconds);
-    }
 
     [Fact]
     public async Task A_record_at_23_30_on_the_last_day_of_the_month_belongs_to_that_month_in_the_church_zone()
@@ -191,7 +169,7 @@ public class TimeRecordTests
     [Fact]
     public void Timer_record_carries_the_service_type_name_and_a_stable_id()
     {
-        var timer = new BlockTimer([new BlockTemplate(Guid.NewGuid(), "Bienvenida", 10, null)]);
+        var timer = new BlockTimer([new BlockTemplate(Guid.NewGuid(), "Bienvenida", 10)]);
         timer.Start(null, new DateTime(2026, 10, 4, 10, 0, 0));
         timer.Finish(new DateTime(2026, 10, 4, 10, 12, 0));
 

@@ -40,13 +40,11 @@ public sealed partial class FakeIrisApiHandler
         var church = a.Church.Id;
         if (c.Is("POST", "media", "uploads"))
         {
-            Require(a, "media.manage");
             return CreateUpload(c, a);
         }
 
         if (c.Is("POST", "media"))
         {
-            Require(a, "media.manage");
             return ConfirmUpload(c, a);
         }
 
@@ -70,7 +68,6 @@ public sealed partial class FakeIrisApiHandler
 
         if (c.Is("PATCH", "media", "*"))
         {
-            Require(a, "media.manage");
             var id = ParseId(c.Segments[1]);
             var media = FakeRows.Find(_db, church, FakeKind.Media, id, IrisJsonContext.Default.MediaAssetDto) ?? throw NotFound();
             var patch = c.Body(IrisJsonContext.Default.MediaPatchDto);
@@ -79,9 +76,10 @@ public sealed partial class FakeIrisApiHandler
                 throw Validation("title", "El título debe tener entre 1 y 120 caracteres.");
             }
 
-            if (patch.IsBackground == true && media.Kind != "image")
+            if (patch.IsBackground == true &&
+                Iris.Core.Models.MediaBackgroundRules.Problem(Mapping.ParseKind(media.Kind), media.SizeBytes, media.Width, media.Height, media.DurationSeconds) is { } problem)
             {
-                throw Validation("isBackground", "Solo las imágenes pueden ser fondos.");
+                throw Validation("isBackground", problem);
             }
 
             media = media with
@@ -97,7 +95,6 @@ public sealed partial class FakeIrisApiHandler
 
         if (c.Is("DELETE", "media", "*"))
         {
-            Require(a, "media.manage");
             var id = ParseId(c.Segments[1]);
             var media = FakeRows.Find(_db, church, FakeKind.Media, id, IrisJsonContext.Default.MediaAssetDto) ?? throw NotFound();
             FakeRows.SoftDelete(_db, church, FakeKind.Media, id);
@@ -124,9 +121,16 @@ public sealed partial class FakeIrisApiHandler
         }
 
         var items = FakeRows.Live(_db, church, FakeKind.Media, IrisJsonContext.Default.MediaAssetDto);
+        // `kind=image` or several separated by commas: `kind=image,video` (api-contract §11).
         if (c.Query["kind"] is { Length: > 0 } kind)
         {
-            items = items.Where(m => m.Kind == kind);
+            var kinds = kind.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+            if (kinds.Any(k => !MediaRules.ContainsKey(k)))
+            {
+                throw Validation("kind", "El tipo debe ser image, video o audio.");
+            }
+
+            items = items.Where(m => kinds.Contains(m.Kind));
         }
 
         if (c.Query["isBackground"] is { Length: > 0 } background)
@@ -198,9 +202,10 @@ public sealed partial class FakeIrisApiHandler
             throw new FakeHttpException(400, "UPLOAD_NOT_FOUND", "No encontramos el archivo subido. Inténtalo de nuevo.");
         }
 
-        if (body.IsBackground == true && upload.Request.Kind != "image")
+        if (body.IsBackground == true &&
+            Iris.Core.Models.MediaBackgroundRules.Problem(Mapping.ParseKind(upload.Request.Kind), upload.Request.SizeBytes, body.Width, body.Height, body.DurationSeconds) is { } problem)
         {
-            throw Validation("isBackground", "Solo las imágenes pueden ser fondos.");
+            throw Validation("isBackground", problem);
         }
 
         var now = _now();

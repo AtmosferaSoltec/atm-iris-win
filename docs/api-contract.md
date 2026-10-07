@@ -24,7 +24,7 @@
 | Autenticación | `Authorization: Bearer <accessToken>`. Todo es privado salvo lo marcado como **Pública** |
 | Fechas | ISO-8601 en UTC con milisegundos: `"2026-10-05T15:30:31.022Z"` |
 | IDs | UUID en texto (`"01a10cb0-1d73-709f-b03e-c6c9c36a17f0"`). El servidor genera UUID v7; los clientes pueden mandar UUID v4 o v7 donde se indique `id?` |
-| Enums | Viajan en **minúsculas** en inglés (`"owner"`, `"image"`, `"skipped"`) |
+| Enums | Viajan en **minúsculas** en inglés (`"ios"`, `"image"`, `"skipped"`) |
 | Textos | Todo `message` está en español y se puede mostrar tal cual |
 | Vacíos | Un campo opcional sin valor viaja como `null`, nunca se omite en respuestas |
 | Request id | El API devuelve `X-Request-Id` en cada respuesta. Si el cliente manda uno, se respeta. Sirve para cruzar logs |
@@ -66,7 +66,7 @@ Paginación: query `page` (≥ 1, por defecto 1) y `limit` (1–100, por defecto
 |---|---|---|
 | `VALIDATION_FAILED` | 400 | El cuerpo o la query no cumplen el esquema. Trae `errors` |
 | `UNAUTHORIZED` | 401 | Sin token, token inválido o vencido, sesión cerrada. **El cliente refresca una vez y reintenta** |
-| `FORBIDDEN` | 403 | La sesión es válida pero su rol no tiene el permiso (§3) |
+| `FORBIDDEN` | 403 | Reservado. La v1 no tiene permisos por rol (§3), así que hoy la API no lo devuelve |
 | `NOT_FOUND` | 404 | No existe en esta iglesia |
 | `CONFLICT` | 409 | Choque genérico de unicidad |
 | `TOO_MANY_REQUESTS` | 429 | Límite de peticiones |
@@ -74,15 +74,11 @@ Paginación: query `page` (≥ 1, por defecto 1) y `limit` (1–100, por defecto
 | `INVALID_CREDENTIALS` | 401 | Login con correo o contraseña incorrectos |
 | `EMAIL_TAKEN` | 409 | Registro con un correo existente |
 | `INVALID_REFRESH_TOKEN` | 401 | El refresh no sirve: vencido, revocado o reusado. **Volver a la pantalla de acceso** |
-| `NO_CHURCH_ACCESS` | 403 | La cuenta no tiene ninguna iglesia activa |
 | `RESET_CODE_INVALID` | 400 | Código de recuperación incorrecto o vencido |
 | `RESET_LIMIT_REACHED` | 400 | Código quemado por intentos |
 | `INVALID_CURRENT_PASSWORD` | 400 | Cambio de contraseña con la actual incorrecta |
 | `PERSON_NAME_TAKEN` | 409 | Persona duplicada (comparación por *nameKey*, §2) |
 | `SERVICE_TYPE_NAME_TAKEN` | 409 | Tipo de servicio duplicado |
-| `LAST_OWNER` | 409 | Quitar o degradar al último dueño de la iglesia |
-| `ALREADY_MEMBER` | 409 | Invitar a alguien que ya es miembro activo |
-| `INVITATION_INVALID` | 400 | Invitación inexistente, vencida, revocada o ya usada |
 | `UNSUPPORTED_MEDIA_TYPE` | 415 | Tipo de archivo no permitido para ese `kind` |
 | `FILE_TOO_LARGE` | 413 | El archivo supera el máximo del `kind` |
 | `STORAGE_QUOTA_EXCEEDED` | 413 | La iglesia superaría su cuota de almacenamiento |
@@ -102,42 +98,24 @@ Paginación: query `page` (≥ 1, por defecto 1) y `limit` (1–100, por defecto
 
 ---
 
-## 3. Roles y permisos
+## 3. Una cuenta por iglesia
 
-Los clientes muestran u ocultan acciones según `permissions` (lista de la sesión, §4). **Nunca comparan nombres de rol** para decidir.
+La v1 **no tiene roles, permisos, equipo ni invitaciones**. Cada iglesia tiene una sola cuenta (correo y contraseña) y quien entra con ella puede hacer todo en esa iglesia. La misma cuenta sirve en el iPad, la web y Windows.
 
-| Permiso | Permite | owner | admin | operator |
-|---|---|:-:|:-:|:-:|
-| `church.manage` | Cambiar nombre y zona horaria de la iglesia | ✓ | ✓ | |
-| `modules.manage` | Encender y apagar módulos | ✓ | ✓ | |
-| `members.manage` | Invitar, cambiar rol y quitar miembros | ✓ | ✓ | |
-| `songs.manage` | Crear, editar, importar y borrar canciones | ✓ | ✓ | |
-| `media.manage` | Subir, editar y borrar multimedia | ✓ | ✓ | |
-| `serviceTypes.manage` | Crear, editar y borrar tipos de servicio (incluye "Guardar en la plantilla") | ✓ | ✓ | |
-| `people.manage` | Crear, renombrar y borrar personas | ✓ | ✓ | ✓ |
-| `records.write` | Guardar el registro de tiempos al terminar un servicio | ✓ | ✓ | ✓ |
-| `records.manage` | Ajustar duraciones, cambiar responsable y borrar registros | ✓ | ✓ | |
-
-- Cualquier miembro activo **lee** todo lo de su iglesia.
-- Solo un `owner` puede asignar o quitar el rol `owner`. Un `admin` no puede modificar ni quitar a un `owner`.
-- `operator` tiene `people.manage` porque la consola agrega responsables al vuelo durante el servicio.
+- Se crea al registrarse (`POST /auth/sign-up`): crea la iglesia y su cuenta a la vez.
+- Una cuenta pertenece a una sola iglesia. No hay selector de iglesia.
+- Los clientes **no ocultan ni deshabilitan acciones** según quién entra: todas están disponibles.
 
 ---
 
 ## 4. Tipos comunes
 
 ```ts
-type Role = "owner" | "admin" | "operator";
 type Platform = "web" | "ios" | "windows";
-
-type ChurchSummary = { id: string; name: string; role: Role };
 
 type SessionView = {
   user: { id: string; email: string; fullName: string };
   church: { id: string; name: string; timezone: string };
-  role: Role;
-  permissions: string[];          // §3, ya resueltos para este rol
-  churches: ChurchSummary[];      // todas las membresías activas, ordenadas por nombre
   session: { id: string; platform: Platform; deviceName: string | null };
 };
 
@@ -163,7 +141,7 @@ type ClientInfo = { platform: Platform; deviceName?: string };  // deviceName �
 
 ## 5. Autenticación — `/auth`
 
-| Método | Ruta | Cuerpo | Respuesta | Permiso |
+| Método | Ruta | Cuerpo | Respuesta | Acceso |
 |---|---|---|---|---|
 | POST | `/auth/sign-up` | `{ churchName, fullName, email, password, client: ClientInfo }` | 201 `AuthResult` | Pública |
 | POST | `/auth/sign-in` | `{ email, password, client: ClientInfo }` | 200 `AuthResult` | Pública |
@@ -173,7 +151,6 @@ type ClientInfo = { platform: Platform; deviceName?: string };  // deviceName �
 | GET | `/auth/me` | — | 200 `SessionView` | Sesión |
 | PATCH | `/auth/me` | `{ fullName }` | 200 `SessionView` | Sesión |
 | POST | `/auth/change-password` | `{ currentPassword, password, passwordConfirmation }` | 204. Cierra **las demás** sesiones | Sesión |
-| POST | `/auth/switch-church` | `{ churchId }` | 200 `AuthResult` (misma sesión, otra iglesia, tokens nuevos) | Sesión |
 | GET | `/auth/sessions` | — | 200 `DeviceSession[]` | Sesión |
 | DELETE | `/auth/sessions/:id` | — | 204 (solo sesiones propias; la actual equivale a sign-out) | Sesión |
 | POST | `/auth/forgot-password` | `{ email }` | 200 `{ message }`, siempre igual | Pública |
@@ -190,9 +167,9 @@ type DeviceSession = {
 
 Reglas:
 - Correo: se recorta y se pasa a minúsculas. Contraseña: 8–128 caracteres. Código: exactamente 6 dígitos.
-- `sign-in` entra a la **última iglesia usada** (o la membresía activa más antigua si nunca usó otra).
+- `sign-in` entra a la iglesia de la cuenta.
 - Recuperación: el código vence a los **15 min**, admite **5 intentos** y se envían como máximo **3 por día** por cuenta.
-- Límites por IP: `sign-in` 5/min · `sign-up` 5/h · `forgot-password` 3/h · `verify-reset-code` y `reset-password` 10/15 min · `invitations/accept` 10/15 min · general 300/min.
+- Límites por IP: `sign-in` 5/min · `sign-up` 5/h · `forgot-password` 3/h · `verify-reset-code` y `reset-password` 10/15 min · general 300/min.
 
 Ejemplo `AuthResult`:
 
@@ -201,9 +178,6 @@ Ejemplo `AuthResult`:
   "data": {
     "user": { "id": "01a1…", "email": "pastor@vidanueva.org", "fullName": "Daniel Ruiz" },
     "church": { "id": "01a2…", "name": "Iglesia Vida Nueva", "timezone": "America/Lima" },
-    "role": "owner",
-    "permissions": ["church.manage", "modules.manage", "members.manage", "songs.manage", "media.manage", "serviceTypes.manage", "people.manage", "records.write", "records.manage"],
-    "churches": [{ "id": "01a2…", "name": "Iglesia Vida Nueva", "role": "owner" }],
     "session": { "id": "01a3…", "platform": "ios", "deviceName": "iPad de la sala" },
     "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9…",
     "accessTokenExpiresAt": "2026-10-05T15:45:31.022Z",
@@ -217,79 +191,76 @@ Ejemplo `AuthResult`:
 
 ## 6. Iglesia — `/church`
 
-| Método | Ruta | Cuerpo | Respuesta | Permiso |
+| Método | Ruta | Cuerpo | Respuesta | Acceso |
 |---|---|---|---|---|
 | GET | `/church` | — | `Church` | Sesión |
-| PATCH | `/church` | `{ name?, timezone? }` | `Church` | `church.manage` |
-| PUT | `/church/modules` | `ChurchModules` | `Church` | `modules.manage` |
+| PATCH | `/church` | `{ name?, timezone? }` | `Church` | Sesión |
+| PUT | `/church/modules` | `ChurchModules` | `Church` | Sesión |
+| PUT | `/church/projection` | `ProjectionSettingsInput` | `Church` | Sesión |
 
 ```ts
 type ChurchModules = { bible: boolean; multimedia: boolean; timeControl: boolean };  // Letras siempre activo
+type ProjectionFont =
+  | "system" | "systemRounded" | "serif" | "georgia" | "avenirNext"
+  | "futura" | "gillSans" | "optima" | "baskerville" | "palatino";
+type ProjectionSettings = {
+  fontFamily: ProjectionFont;
+  fontSizePt: number;              // 40–200, referido a una pantalla de 1920 de ancho
+  defaultBackgroundId: string | null;  // fondo cuando no hay ninguno elegido; null = negro
+};
+type ProjectionSettingsInput = ProjectionSettings;  // defaultBackgroundId: "" o null limpian
 type Church = {
   id: string; name: string; timezone: string;
-  modules: ChurchModules;
-  storage: { usedBytes: number; quotaBytes: number };
+  modules: ChurchModules;           // lo que la iglesia ve encendido (su elección y lo disponible en Iris)
+  availableModules: ChurchModules;  // módulos que existen hoy en Iris; lo que está en false no se ofrece
+  projection: ProjectionSettings;   // cómo se ve la letra proyectada; igual en todas las consolas
+  storage: StorageUsage;
   createdAt: string; updatedAt: string;
+};
+type StorageUsage = {
+  usedBytes: number;                // suma de breakdown
+  quotaBytes: number;
+  breakdown: {
+    musicBytes: number;             // audios (sección Música)
+    backgroundBytes: number;        // imágenes y videos con isBackground (sección Fondos)
+    mediaBytes: number;             // el resto de imágenes y videos (sección Multimedia)
+  };
 };
 ```
 
 - `name` 1–120. `timezone` debe ser una zona IANA válida.
 - Iglesia nueva: los tres módulos en `true`, cuota de **5 GiB** (`5368709120`).
+- **Almacenamiento** (`storage`): la cuota es una sola por iglesia y la comparten música, fondos y multimedia.
+  `breakdown` dice cuánto ocupa cada sección (solo medios no borrados; las subidas en curso no cuentan aquí).
+  En `/sync` la iglesia solo viaja cuando cambia, así que una consola que muestre el uso lo pide a `GET /church`.
+- **Letra proyectada** (`projection`): tipografía, tamaño y fondo por defecto, iguales en todas las consolas de la
+  iglesia. `fontFamily` es una clave, no un nombre de fuente: cada cliente la traduce a la fuente real de su
+  plataforma (10 claves — ver `src/modules/church/projection-fonts.ts` en la API para la traducción sugerida por
+  plataforma). `defaultBackgroundId` es el id de un fondo (uno de los degradados fijos o una imagen de la
+  biblioteca) que se muestra cuando la consola no tiene ninguno elegido; un id que ya no existe (una imagen
+  borrada) cae a negro sin avisar, los clientes no lo validan contra nada.
+- **Módulos del sistema** (`availableModules`): el dueño de Iris puede apagar un módulo para todas las iglesias
+  (tabla `system_features`, sin pantalla). Mientras esté apagado, `modules` lo trae en `false` aunque la iglesia lo
+  haya encendido (su elección se guarda y vuelve sola al habilitarlo), y los clientes **no lo muestran**, ni
+  siquiera el interruptor en ajustes. Al cambiar un interruptor del sistema, todas las iglesias suben de versión
+  en `/sync` y las consolas lo reciben en el siguiente ciclo. **Hoy la Biblia está apagada** (`bible: false`).
 
 ---
 
-## 7. Equipo — `/members`, `/invitations`
+## 7. Reservado
 
-| Método | Ruta | Cuerpo | Respuesta | Permiso |
-|---|---|---|---|---|
-| GET | `/members` | — | `Member[]` (activos, por nombre) | Sesión |
-| PATCH | `/members/:id` | `{ role }` | `Member` | `members.manage` |
-| DELETE | `/members/:id` | — | 204 (desactiva la membresía y cierra las sesiones de esa persona **en esta iglesia**) | `members.manage` |
-| GET | `/invitations` | — | `Invitation[]` (pendientes) | `members.manage` |
-| POST | `/invitations` | `{ email, role }` | 201 `Invitation` + correo | `members.manage` |
-| POST | `/invitations/:id/resend` | — | 200 `Invitation` (nuevo token y nuevo vencimiento) | `members.manage` |
-| DELETE | `/invitations/:id` | — | 204 | `members.manage` |
-| GET | `/invitations/lookup?token=` | — | 200 `InvitationPreview` | **Pública** |
-| POST | `/invitations/accept` | ver abajo | 200 `AuthResult` | **Pública** |
-
-```ts
-type Member = {
-  id: string;                     // id de la membresía
-  user: { id: string; email: string; fullName: string };
-  role: Role; joinedAt: string; isCurrentUser: boolean;
-};
-type Invitation = {
-  id: string; email: string; role: Role;
-  invitedBy: { id: string; fullName: string };
-  expiresAt: string; createdAt: string;
-};
-type InvitationPreview = {
-  churchName: string; email: string; role: Role;
-  invitedByName: string; expiresAt: string;
-  hasAccount: boolean;            // si ya existe un usuario con ese correo
-};
-```
-
-`POST /invitations/accept`:
-- Cuenta nueva (`hasAccount: false`): `{ token, fullName, password, client }`.
-- Cuenta existente (`hasAccount: true`): `{ token, password, client }` (la contraseña de **esa** cuenta).
-- En los dos casos crea la membresía, entra a esa iglesia y devuelve `AuthResult`.
-
-Reglas:
-- La invitación vence a los **7 días**. El token (32 bytes, base64url) solo viaja en el enlace del correo: `<WEB_URL>/invitacion?token=…`. En la base se guarda su hash.
-- `ALREADY_MEMBER` si el correo ya es miembro activo. Reinvitar a alguien con invitación pendiente reemplaza la anterior.
-- `LAST_OWNER` al degradar o quitar al único `owner`. Un `admin` recibe `FORBIDDEN` si intenta tocar a un `owner` o asignar `owner`.
+Antes era el equipo (`/members`, `/invitations`). La v1 no tiene equipo, roles ni invitaciones (§3). El número se deja libre para no mover las referencias del resto del documento.
 
 ---
 
 ## 8. Personas — `/people`
 
-| Método | Ruta | Cuerpo | Respuesta | Permiso |
+| Método | Ruta | Cuerpo | Respuesta | Acceso |
 |---|---|---|---|---|
 | GET | `/people` | — | `Person[]` (por nombre, sin borrados) | Sesión |
-| POST | `/people` | `{ id?, name }` | 201 `Person` (200 si el `id` ya existía) | `people.manage` |
-| PATCH | `/people/:id` | `{ name }` | `Person` | `people.manage` |
-| DELETE | `/people/:id` | — | 204 | `people.manage` |
+| POST | `/people` | `{ id?, name }` | 201 `Person` (200 si el `id` ya existía) | Sesión |
+| PATCH | `/people/:id` | `{ name }` | `Person` | Sesión |
+| DELETE | `/people/:id` | — | 204 | Sesión |
 
 ```ts
 type Person = {
@@ -300,19 +271,19 @@ type Person = {
 ```
 
 - `name` 1–80. Único por *nameKey* entre las personas no borradas → `PERSON_NAME_TAKEN`.
-- Borrar una persona quita su `defaultPersonId` de las plantillas (sube la versión de esos tipos de servicio). Los registros conservan `personId` y `personName`.
+- Borrar una persona no cambia las plantillas (no llevan responsable). Los registros conservan `personId` y `personName`.
 
 ---
 
 ## 9. Tipos de servicio — `/service-types`
 
-| Método | Ruta | Cuerpo | Respuesta | Permiso |
+| Método | Ruta | Cuerpo | Respuesta | Acceso |
 |---|---|---|---|---|
 | GET | `/service-types` | — | `ServiceType[]` (por nombre) | Sesión |
 | GET | `/service-types/:id` | — | `ServiceType` | Sesión |
-| POST | `/service-types` | `ServiceTypeInput & { id? }` | 201 `ServiceType` | `serviceTypes.manage` |
-| PUT | `/service-types/:id` | `ServiceTypeInput` | `ServiceType` (reemplazo completo; crea si no existe) | `serviceTypes.manage` |
-| DELETE | `/service-types/:id` | — | 204 | `serviceTypes.manage` |
+| POST | `/service-types` | `ServiceTypeInput & { id? }` | 201 `ServiceType` | Sesión |
+| PUT | `/service-types/:id` | `ServiceTypeInput` | `ServiceType` (reemplazo completo; crea si no existe) | Sesión |
+| DELETE | `/service-types/:id` | — | 204 | Sesión |
 
 ```ts
 type Schedule = { weekday: number; hour: number; minute: number };
@@ -324,10 +295,9 @@ type ServiceTypeInput = {
 };
 type BlockTemplateInput = {
   id?: string; name: string;      // 1–60
-  plannedMinutes: number;         // entero 1–240
-  defaultPersonId: string | null; // persona no borrada de esta iglesia
+  plannedMinutes: number;         // entero 1–240 (sin responsable: se registra en cada servicio)
 };
-type BlockTemplate = { id: string; name: string; plannedMinutes: number; defaultPersonId: string | null };
+type BlockTemplate = { id: string; name: string; plannedMinutes: number };
 type ServiceType = {
   id: string; name: string; color: string; schedule: Schedule | null;
   blocks: BlockTemplate[];        // ya ordenados
@@ -343,26 +313,24 @@ type ServiceType = {
 
 ## 10. Canciones — `/songs`
 
-| Método | Ruta | Cuerpo / query | Respuesta | Permiso |
+| Método | Ruta | Cuerpo / query | Respuesta | Acceso |
 |---|---|---|---|---|
 | GET | `/songs` | `?search=&page=&limit=&sort=title\|-updatedAt` | paginado `SongSummary[]` | Sesión |
 | GET | `/songs/:id` | — | `Song` | Sesión |
-| POST | `/songs` | `SongInput & { id? }` | 201 `Song` | `songs.manage` |
-| PUT | `/songs/:id` | `SongInput` | `Song` (crea si no existe) | `songs.manage` |
-| DELETE | `/songs/:id` | — | 204 | `songs.manage` |
-| POST | `/songs/import` | `{ songs: SongInput[] }` (1–50) | 201 `{ created: SongSummary[]; skipped: { title: string; reason: "duplicate" }[] }` | `songs.manage` |
+| POST | `/songs` | `SongInput & { id? }` | 201 `Song` | Sesión |
+| PUT | `/songs/:id` | `SongInput` | `Song` (crea si no existe) | Sesión |
+| DELETE | `/songs/:id` | — | 204 | Sesión |
 
 ```ts
-type SongSectionInput = { label: string | null; text: string };   // label ≤ 40, text 1–2000
+type SongSectionInput = { label: string | null; text: string };   // label ≤ 40 (opcional; la web lo escribe como `#Coro` en la letra), text 1–2000
 type SongInput = {
   title: string;                  // 1–120
   author: string;                 // 0–120 ("" si no hay)
-  copyright: string | null;       // ≤ 200
   sections: SongSectionInput[];   // 1–80, en orden
 };
 type SongSection = { id: string; label: string | null; text: string };
 type Song = {
-  id: string; title: string; author: string; copyright: string | null;
+  id: string; title: string; author: string;
   sections: SongSection[];
   createdAt: string; updatedAt: string;
 };
@@ -374,7 +342,7 @@ type SongSummary = {
 ```
 
 - `search` busca sin acentos ni mayúsculas en título, autor y texto de las secciones; ordena por relevancia cuando hay búsqueda. `limit` máximo 100. Sin `sort`, se ordena por título.
-- Los títulos **no** son únicos (dos iglesias pueden cantar dos versiones). Solo la importación salta los títulos que ya existen por *nameKey* (`skipped`).
+- Los títulos **no** son únicos (dos iglesias pueden cantar dos versiones). Dos canciones con el mismo título son dos letras distintas.
 - El texto llega ya dividido en secciones: el formato de texto plano (`[Coro]`, línea en blanco entre diapositivas) lo resuelve cada cliente. Regla de referencia: `atm-iris-web/src/lib/lyrics.ts`.
 
 ---
@@ -383,15 +351,15 @@ type SongSummary = {
 
 La subida va **directo al almacenamiento** (S3 compatible: Cloudflare R2 en producción, MinIO en local) con una URL firmada. La API nunca recibe los bytes.
 
-| Método | Ruta | Cuerpo / query | Respuesta | Permiso |
+| Método | Ruta | Cuerpo / query | Respuesta | Acceso |
 |---|---|---|---|---|
-| POST | `/media/uploads` | `{ kind, fileName, contentType, sizeBytes }` | 201 `UploadTicket` | `media.manage` |
-| POST | `/media` | `{ uploadId, title, description?, durationSeconds?, width?, height?, isBackground? }` | 201 `MediaAsset` | `media.manage` |
-| GET | `/media` | `?kind=&search=&isBackground=&page=&limit=` | paginado `MediaAsset[]` (más reciente primero) | Sesión |
+| POST | `/media/uploads` | `{ kind, fileName, contentType, sizeBytes }` | 201 `UploadTicket` | Sesión |
+| POST | `/media` | `{ uploadId, title, description?, durationSeconds?, width?, height?, isBackground? }` | 201 `MediaAsset` | Sesión |
+| GET | `/media` | `?kind=&search=&isBackground=&page=&limit=` (`kind` acepta varios separados por coma: `image,video`) | paginado `MediaAsset[]` (más reciente primero) | Sesión |
 | GET | `/media/:id` | — | `MediaAsset` | Sesión |
 | GET | `/media/:id/download-url` | — | `{ url, expiresAt }` (GET firmado, 1 h) | Sesión |
-| PATCH | `/media/:id` | `{ title?, description?, isBackground? }` | `MediaAsset` | `media.manage` |
-| DELETE | `/media/:id` | — | 204 (libera la cuota; el archivo se borra del almacenamiento después) | `media.manage` |
+| PATCH | `/media/:id` | `{ title?, description?, isBackground? }` | `MediaAsset` | Sesión |
+| DELETE | `/media/:id` | — | 204 (libera la cuota; el archivo se borra del almacenamiento después) | Sesión |
 
 ```ts
 type MediaKind = "image" | "video" | "audio";
@@ -406,7 +374,7 @@ type MediaAsset = {
   fileName: string; contentType: string; sizeBytes: number;
   durationSeconds: number | null; // audio y video
   width: number | null; height: number | null;   // imagen y video
-  isBackground: boolean;          // solo imágenes: aparece en el selector de fondos de la consola
+  isBackground: boolean;          // fondo de las letras (imagen o video); ver "Fondos" abajo
   createdAt: string; updatedAt: string;
 };
 ```
@@ -417,11 +385,36 @@ type MediaAsset = {
 | `video` | `video/mp4`, `video/quicktime` | 2 GB |
 | `audio` | `audio/mpeg`, `audio/mp4`, `audio/aac`, `audio/wav`, `audio/x-wav` | 200 MB |
 
+**Fondos** (`isBackground: true`): imágenes o videos que las consolas muestran detrás de la letra. Al confirmar (`POST /media`) o al marcarlo (`PATCH`) la API valida, con los metadatos del medio, y responde 400 `VALIDATION_FAILED` (`errors.isBackground`) con el motivo:
+
+| | Imagen | Video |
+|---|---|---|
+| Formato | JPG, PNG, WebP | solo MP4 |
+| Proporción | 16:9 (±2 %) | 16:9 (±2 %) |
+| Tamaño | 1280 × 720 a 3840 × 2160; recomendado 1920 × 1080 | 1280 × 720 a 1920 × 1080 |
+| Duración | — | hasta **30 s**; las consolas lo repiten en bucle y sin sonido |
+| Peso | hasta 10 MB | hasta 100 MB |
+
+Un audio no puede ser fondo. Los fondos cuentan para la cuota como cualquier medio.
+
 Flujo:
 1. `POST /media/uploads` valida tipo, tamaño y cuota (`UNSUPPORTED_MEDIA_TYPE`, `FILE_TOO_LARGE`, `STORAGE_QUOTA_EXCEEDED`).
 2. El cliente hace `PUT uploadUrl` con los `headers` y los bytes.
 3. `POST /media` confirma: la API comprueba que el objeto existe y que su tamaño coincide (`UPLOAD_NOT_FOUND` si no) y crea el `MediaAsset`. Los metadatos (`durationSeconds`, `width`, `height`) los mide el cliente que sube.
 4. Las consolas descargan con `GET /media/:id/download-url` y guardan el archivo en caché por `id` + `updatedAt`.
+
+**Secciones de la web**: **Música** (`kind=audio`, el repertorio de pistas que suenan en el salón), **Fondos**
+(`isBackground=true`) y **Multimedia** (`kind=image,video&isBackground=false`, material para una ocasión). Las tres
+son el mismo `MediaAsset` y comparten la cuota. Las letras (§10) son otra cosa y no ocupan almacenamiento.
+
+**Qué descarga una consola y cuándo** (los archivos no viven en una carpeta del equipo: salen de aquí):
+- **Imágenes y fondos** (también los videos de fondo): todos, apenas llegan por `/sync`. Son livianos y se
+  necesitan al instante.
+- **Música y videos**: solo los que se usan. La descarga empieza al agregarlos al servicio en la consola (o al
+  reproducirlos, si todavía no estaban), y el archivo se queda en el equipo para la próxima vez.
+- Lo borrado (`deleted.media` en `/sync`, o un `updatedAt` nuevo) se elimina del equipo en la siguiente
+  sincronización. El archivo sigue en el almacenamiento 24 h después del borrado, así una consola atrasada no se
+  queda a medias.
 
 Las subidas sin confirmar vencen a la hora y se limpian solas.
 
@@ -490,19 +483,21 @@ type BibleDownload = {
 ```
 
 - Las consolas descargan `download` una vez (y de nuevo si cambia `version`) y buscan sin conexión.
-- Requieren sesión; no dependen del módulo `bible` (el módulo solo oculta la función en la consola).
+- Requieren sesión; no dependen del módulo `bible` de cada iglesia (el módulo solo oculta la función en la consola).
+- Con la Biblia apagada para todo Iris (`availableModules.bible = false`) todas estas rutas responden
+  404 `NOT_FOUND` «La Biblia no está disponible por ahora.».
 
 ---
 
 ## 14. Tiempos — `/service-records`
 
-| Método | Ruta | Cuerpo / query | Respuesta | Permiso |
+| Método | Ruta | Cuerpo / query | Respuesta | Acceso |
 |---|---|---|---|---|
 | GET | `/service-records` | `?from=&to=&serviceTypeId=&page=&limit=` (limit ≤ 500) | paginado `ServiceRecord[]` (más reciente primero) | Sesión |
 | GET | `/service-records/:id` | — | `ServiceRecord` | Sesión |
-| PUT | `/service-records/:id` | `ServiceRecordInput` | 201 si lo crea · 200 si ya existía | `records.write` para crear; `records.manage` para reemplazar uno existente con contenido distinto |
-| PATCH | `/service-records/:id/blocks/:blockId` | `{ actualSeconds?, personId? }` | `ServiceRecord` | `records.manage` |
-| DELETE | `/service-records/:id` | — | 204 | `records.manage` |
+| PUT | `/service-records/:id` | `ServiceRecordInput` | 201 si lo crea · 200 si ya existía | Sesión |
+| PATCH | `/service-records/:id/blocks/:blockId` | `{ actualSeconds?, personId? }` | `ServiceRecord` | Sesión |
+| DELETE | `/service-records/:id` | — | 204 | Sesión |
 
 ```ts
 type BlockStatus = "completed" | "skipped" | "adjusted";

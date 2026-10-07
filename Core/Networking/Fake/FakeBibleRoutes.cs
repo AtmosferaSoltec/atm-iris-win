@@ -30,6 +30,13 @@ public sealed partial class FakeIrisApiHandler
             return null;
         }
 
+        // Mirrors `system_features` in the real API: off for every church until a licensed Spanish
+        // translation is ready. Flip `FakeDb.SystemBibleEnabled` to exercise this path.
+        if (!_db.SystemBibleEnabled)
+        {
+            throw NotFound("La Biblia no está disponible por ahora.");
+        }
+
         if (c.Is("GET", "bible", "translations"))
         {
             var translation = new BibleTranslationDto(BibleCode, BibleName, "es", BibleVersion, BibleJson().Length);

@@ -25,10 +25,10 @@ public sealed partial class SyncIndicatorViewModel : ObservableObject
 
     public SyncIndicatorViewModel(ISyncService sync, IUiDispatcher ui, IMediaCache cache, Func<DateTimeOffset>? now = null)
     {
+        _ui = ui;
         _cache = cache;
         _cache.LowDiskSpaceChanged += (_, _) => _ui.Post(Refresh);
         _sync = sync;
-        _ui = ui;
         _now = now ?? (() => DateTimeOffset.UtcNow);
         _sync.StatusChanged += (_, _) => _ui.Post(Refresh);
         _sync.WriteDiscarded += (_, discarded) => _ui.Post(() =>

@@ -412,7 +412,7 @@ public sealed partial class BlockTimerViewModel : ObservableObject
         {
             if (updatingTemplate && CanUpdateTemplate)
             {
-                await _types.SaveAsync(_type with { Blocks = Timer.UpdatedTemplate(_type.Blocks) });
+                await _types.SaveAsync(_type with { Blocks = Timer.UpdatedTemplate() });
             }
 
             await _records.SaveAsync(record);

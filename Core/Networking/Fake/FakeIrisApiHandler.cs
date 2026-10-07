@@ -265,7 +265,7 @@ public sealed partial class FakeIrisApiHandler : HttpMessageHandler
         return handled ?? throw NotFound("Ruta no encontrada.");
     }
 
-    private sealed record AuthContext(FakeSession Session, FakeUser User, FakeMembership Membership, FakeChurchRow Church);
+    private sealed record AuthContext(FakeSession Session, FakeUser User, FakeChurchRow Church);
 
     private AuthContext Authenticate(Ctx c)
     {
@@ -289,30 +289,7 @@ public sealed partial class FakeIrisApiHandler : HttpMessageHandler
         }
 
         var user = _db.Users.First(u => u.Id == session.UserId);
-        var membership = user.Memberships.FirstOrDefault(m => m.ChurchId == session.ChurchId && m.Active) ?? throw unauthorized;
         session.LastUsedAt = _now();
-        return new AuthContext(session, user, membership, _db.Churches.First(ch => ch.Id == session.ChurchId));
+        return new AuthContext(session, user, _db.Churches.First(ch => ch.Id == session.ChurchId));
     }
-
-    private static void Require(AuthContext a, string permission)
-    {
-        if (!FakeAccess.PermissionsFor(a.Membership.Role).Contains(permission))
-        {
-            throw new FakeHttpException(403, "FORBIDDEN", "No tienes permiso para hacer esto.");
-        }
-    }
-}
-
-/// <summary>Role → permissions table of api-contract §3.</summary>
-public static class FakeAccess
-{
-    private static readonly string[] Operator = ["people.manage", "records.write"];
-
-    private static readonly string[] Admin =
-    [
-        "church.manage", "modules.manage", "members.manage", "songs.manage", "media.manage",
-        "serviceTypes.manage", "people.manage", "records.write", "records.manage",
-    ];
-
-    public static IReadOnlyList<string> PermissionsFor(string role) => role == "operator" ? Operator : Admin;
 }

@@ -21,7 +21,6 @@ public sealed partial class FakeIrisApiHandler
 
         if (c.Is("PATCH", "church"))
         {
-            Require(a, "church.manage");
             var body = c.Body(IrisJsonContext.Default.ChurchPatchDto);
             var errors = new Dictionary<string, string>();
             if (body.Name is { } name && name.Trim().Length is 0 or > 120)
@@ -55,11 +54,36 @@ public sealed partial class FakeIrisApiHandler
 
         if (c.Is("PUT", "church", "modules"))
         {
-            Require(a, "modules.manage");
             var modules = c.Body(IrisJsonContext.Default.ChurchModulesDto);
-            a.Church.Bible = modules.Bible;
+            // A module switched off for all of Iris is not touched: its choice is kept and comes
+            // back on its own once the module is available again.
+            if (_db.SystemBibleEnabled)
+            {
+                a.Church.Bible = modules.Bible;
+            }
+
             a.Church.Multimedia = modules.Multimedia;
             a.Church.TimeControl = modules.TimeControl;
+            TouchChurch(a.Church);
+            return Ok(ToChurchDto(a.Church), IrisJsonContext.Default.ChurchDto);
+        }
+
+        if (c.Is("PUT", "church", "projection"))
+        {
+            var input = c.Body(IrisJsonContext.Default.ProjectionSettingsDto);
+            if (string.IsNullOrWhiteSpace(input.FontFamily) || Mapping.ParseFontFamily(input.FontFamily) is var parsed && Mapping.ToWire(parsed) != input.FontFamily)
+            {
+                throw Validation("fontFamily", "Esa tipografía no existe.");
+            }
+
+            if (input.FontSizePt is < ProjectionSettings.MinFontSizePt or > ProjectionSettings.MaxFontSizePt)
+            {
+                throw Validation("fontSizePt", $"El tamaño debe estar entre {ProjectionSettings.MinFontSizePt} y {ProjectionSettings.MaxFontSizePt}.");
+            }
+
+            a.Church.ProjectionFontFamily = input.FontFamily;
+            a.Church.ProjectionFontSizePt = input.FontSizePt;
+            a.Church.ProjectionDefaultBackgroundId = string.IsNullOrWhiteSpace(input.DefaultBackgroundId) ? null : input.DefaultBackgroundId;
             TouchChurch(a.Church);
             return Ok(ToChurchDto(a.Church), IrisJsonContext.Default.ChurchDto);
         }
@@ -106,7 +130,6 @@ public sealed partial class FakeIrisApiHandler
 
         if (c.Is("POST", "people"))
         {
-            Require(a, "people.manage");
             var body = c.Body(IrisJsonContext.Default.PersonCreateDto);
             var name = ValidPersonName(body.Name);
             var id = body.Id ?? Guid.NewGuid();
@@ -129,7 +152,6 @@ public sealed partial class FakeIrisApiHandler
 
         if (c.Is("PATCH", "people", "*"))
         {
-            Require(a, "people.manage");
             var id = ParseId(c.Segments[1]);
             var person = FakeRows.Find(_db, church, FakeKind.People, id, IrisJsonContext.Default.PersonDto) ?? throw NotFound();
             var name = ValidPersonName(c.Body(IrisJsonContext.Default.PersonRenameDto).Name);
@@ -141,25 +163,10 @@ public sealed partial class FakeIrisApiHandler
 
         if (c.Is("DELETE", "people", "*"))
         {
-            Require(a, "people.manage");
             var id = ParseId(c.Segments[1]);
             if (!FakeRows.SoftDelete(_db, church, FakeKind.People, id))
             {
                 throw NotFound();
-            }
-
-            // Templates stop suggesting the person (and so their version goes up).
-            foreach (var type in FakeRows.Live(_db, church, FakeKind.ServiceTypes, IrisJsonContext.Default.ServiceTypeDto).ToList())
-            {
-                if (type.Blocks.Any(b => b.DefaultPersonId == id))
-                {
-                    var cleaned = type with
-                    {
-                        Blocks = type.Blocks.Select(b => b.DefaultPersonId == id ? b with { DefaultPersonId = null } : b).ToList(),
-                        UpdatedAt = _now(),
-                    };
-                    FakeRows.Put(_db, church, FakeKind.ServiceTypes, type.Id, cleaned, IrisJsonContext.Default.ServiceTypeDto);
-                }
             }
 
             return NoContent();
@@ -211,7 +218,6 @@ public sealed partial class FakeIrisApiHandler
 
         if (c.Is("POST", "service-types"))
         {
-            Require(a, "serviceTypes.manage");
             var body = c.Body(IrisJsonContext.Default.ServiceTypeCreateDto);
             var id = body.Id ?? Guid.NewGuid();
             var existing = FakeRows.Find(_db, church, FakeKind.ServiceTypes, id, IrisJsonContext.Default.ServiceTypeDto);
@@ -231,7 +237,6 @@ public sealed partial class FakeIrisApiHandler
 
         if (c.Is("PUT", "service-types", "*"))
         {
-            Require(a, "serviceTypes.manage");
             var id = ParseId(c.Segments[1]);
             var input = c.Body(IrisJsonContext.Default.ServiceTypeInputDto);
             var existing = FakeRows.Find(_db, church, FakeKind.ServiceTypes, id, IrisJsonContext.Default.ServiceTypeDto);
@@ -246,7 +251,6 @@ public sealed partial class FakeIrisApiHandler
 
         if (c.Is("DELETE", "service-types", "*"))
         {
-            Require(a, "serviceTypes.manage");
             if (!FakeRows.SoftDelete(_db, church, FakeKind.ServiceTypes, ParseId(c.Segments[1])))
             {
                 throw NotFound();
@@ -283,7 +287,6 @@ public sealed partial class FakeIrisApiHandler
             errors["blocks"] = "Un servicio puede tener hasta 30 bloques.";
         }
 
-        var people = FakeRows.Live(_db, church, FakeKind.People, IrisJsonContext.Default.PersonDto).Select(p => p.Id).ToHashSet();
         for (var i = 0; i < blocks.Count; i++)
         {
             var block = blocks[i];
@@ -295,11 +298,6 @@ public sealed partial class FakeIrisApiHandler
             if (block.PlannedMinutes is < 1 or > 240)
             {
                 errors[$"blocks.{i}.plannedMinutes"] = "Los minutos deben estar entre 1 y 240.";
-            }
-
-            if (block.DefaultPersonId is { } person && !people.Contains(person))
-            {
-                errors[$"blocks.{i}.defaultPersonId"] = "La persona no existe.";
             }
         }
 
@@ -320,7 +318,7 @@ public sealed partial class FakeIrisApiHandler
             name,
             input.Color,
             input.Schedule,
-            blocks.Select(b => new BlockTemplateDto(b.Id ?? Guid.NewGuid(), b.Name!.Trim(), b.PlannedMinutes, b.DefaultPersonId)).ToList(),
+            blocks.Select(b => new BlockTemplateDto(b.Id ?? Guid.NewGuid(), b.Name!.Trim(), b.PlannedMinutes)).ToList(),
             existing?.CreatedAt ?? now,
             now);
         FakeRows.Put(_db, church, FakeKind.ServiceTypes, id, dto, IrisJsonContext.Default.ServiceTypeDto);

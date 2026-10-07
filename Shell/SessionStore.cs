@@ -25,12 +25,12 @@ public sealed partial class SessionStore : ObservableObject, Iris.Core.Services.
 
     public SessionStore(IAuthService auth, SignedInNavigator navigator, IDisplayOutputService display, IUiDispatcher ui, ISyncService sync)
     {
+        _ui = ui;
         _sync = sync;
         _sync.PermissionsMayHaveChanged += (_, _) => _ui.Post(() => _ = RefreshInBackgroundAsync());
         _auth = auth;
         _navigator = navigator;
         _display = display;
-        _ui = ui;
         _auth.SessionExpired += (_, _) => _ui.Post(OnExpired);
         _auth.SessionUpdated += (_, session) => _ui.Post(() =>
         {

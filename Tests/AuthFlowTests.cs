@@ -9,32 +9,20 @@ namespace Iris.Tests;
 public class AuthFlowTests
 {
     [Fact]
-    public async Task SignIn_returns_session_with_permissions_and_stores_tokens()
+    public async Task SignIn_returns_a_session_that_can_do_everything_and_stores_tokens()
     {
         var stack = new TestStack();
         var session = await stack.SignInAsync();
 
         Assert.Equal("pastor@vidanueva.org", session.Email);
         Assert.Equal("Iglesia Vida Nueva", session.Church.Name);
-        Assert.Equal(Role.Owner, session.Role);
-        Assert.True(session.Can(Permission.SongsManage));
-        Assert.Equal(2, session.Churches.Count);
+        // One account per church (api-contract §3): no roles to check and no church to switch to.
+        Assert.All(Enum.GetValues<Permission>(), p => Assert.True(session.Can(p)));
+        Assert.Empty(session.Churches);
         Assert.NotNull(stack.Tokens.Load());
         Assert.NotNull(stack.File.Load());
     }
 
-    [Fact]
-    public async Task Operator_lacks_admin_permissions()
-    {
-        var stack = new TestStack();
-        var session = await stack.SignInAsync("operador@vidanueva.org");
-
-        Assert.Equal(Role.Operator, session.Role);
-        Assert.True(session.Can(Permission.PeopleManage));
-        Assert.True(session.Can(Permission.RecordsWrite));
-        Assert.False(session.Can(Permission.RecordsManage));
-        Assert.False(session.Can(Permission.ServiceTypesManage));
-    }
 
     [Fact]
     public async Task Wrong_password_reports_invalid_credentials_with_the_server_message()
@@ -207,15 +195,4 @@ public class AuthFlowTests
         Assert.False(stack.Auth.HasSession);
     }
 
-    [Fact]
-    public async Task Switch_church_returns_the_other_church()
-    {
-        var stack = new TestStack();
-        var session = await stack.SignInAsync();
-        var other = session.Churches.First(c => c.Id != session.Church.Id);
-
-        var switched = await stack.Service.SwitchChurchAsync(other.Id);
-
-        Assert.Equal(other.Id, switched.Church.Id);
-    }
 }

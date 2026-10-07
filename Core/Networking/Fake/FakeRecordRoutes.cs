@@ -38,13 +38,11 @@ public sealed partial class FakeIrisApiHandler
 
         if (c.Is("PATCH", "service-records", "*", "blocks", "*"))
         {
-            Require(a, "records.manage");
             return PatchBlock(c, a);
         }
 
         if (c.Is("DELETE", "service-records", "*"))
         {
-            Require(a, "records.manage");
             if (!FakeRows.SoftDelete(_db, church, FakeKind.ServiceRecords, ParseId(c.Segments[1])))
             {
                 throw NotFound();
@@ -106,7 +104,6 @@ public sealed partial class FakeIrisApiHandler
         var existing = FakeRows.Find(_db, church, FakeKind.ServiceRecords, id, IrisJsonContext.Default.ServiceRecordDto);
         if (existing is null)
         {
-            Require(a, "records.write");
             if (FakeRows.BelongsToOtherChurch(_db, church, FakeKind.ServiceRecords, id))
             {
                 throw new FakeHttpException(409, "ID_CONFLICT", "Ese identificador ya pertenece a otro recurso.");
@@ -125,7 +122,6 @@ public sealed partial class FakeIrisApiHandler
             return Ok(existing, IrisJsonContext.Default.ServiceRecordDto);
         }
 
-        Require(a, "records.manage");
         var replaced = existing with
         {
             Date = input.Date,

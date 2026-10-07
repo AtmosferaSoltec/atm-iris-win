@@ -44,6 +44,14 @@
     <Page Remove="Tests\**" />
   </ItemGroup>
 
+  <!-- Scripts/MacCheck holds two small check projects for a Mac (see its README): never part of the app. -->
+  <ItemGroup>
+    <Compile Remove="Scripts\**" />
+    <Content Remove="Scripts\**" />
+    <None Remove="Scripts\**" />
+    <Page Remove="Scripts\**" />
+  </ItemGroup>
+
   <ItemGroup>
     <Manifest Include="$(ApplicationManifest)" />
   </ItemGroup>

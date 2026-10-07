@@ -35,11 +35,8 @@ public sealed record ServiceTypeSummary(string Name, string Color, bool TracksTi
     public bool IsProjectionOnly => !TracksTime;
 }
 
-/// <summary>A block in the hero's plan: dot, name, suggested leader, "10 min".</summary>
-public sealed record BlockPlanRow(int Index, string Name, string Leader, string Minutes)
-{
-    public bool HasLeader => Leader.Length > 0;
-}
+/// <summary>A block in the hero's plan: dot, name, "10 min". Templates carry no leader (api-contract §9).</summary>
+public sealed record BlockPlanRow(int Index, string Name, string Minutes);
 
 public sealed record ModuleStatus(string Name, bool IsOn)
 {
@@ -170,7 +167,7 @@ public sealed partial class HomeViewModel : ObservableObject
     public IReadOnlyList<int> BlockMinutes => SelectedType?.Blocks.Select(b => b.PlannedMinutes).ToList() ?? [];
 
     public IReadOnlyList<BlockPlanRow> BlockPlan => SelectedType?.Blocks
-        .Select((b, i) => new BlockPlanRow(i, b.Name, PersonName(b.DefaultPersonId), $"{b.PlannedMinutes} min"))
+        .Select((b, i) => new BlockPlanRow(i, b.Name, $"{b.PlannedMinutes} min"))
         .ToList() ?? [];
 
     public ProjectionFrame LogoFrame => new(null, new LogoContent(ChurchName));
@@ -210,12 +207,15 @@ public sealed partial class HomeViewModel : ObservableObject
 
     public string PeopleText => People.Count == 1 ? "1 persona registrada" : $"{People.Count} personas registradas";
 
+    /// <summary>What exists in Iris today; the Módulos tile does not list what is switched off for everyone (api-contract §6).</summary>
+    public ChurchModules AvailableModules { get; private set; } = ChurchModules.All;
+
     public IReadOnlyList<ModuleStatus> ModuleStatuses =>
     [
         new("Letras", true),
-        new("Biblia", Modules.Bible),
-        new("Multimedia", Modules.Multimedia),
-        new("Control de tiempo", Modules.TimeControl),
+        .. AvailableModules.Bible ? [new ModuleStatus("Biblia", Modules.Bible)] : Array.Empty<ModuleStatus>(),
+        .. AvailableModules.Multimedia ? [new ModuleStatus("Multimedia", Modules.Multimedia)] : Array.Empty<ModuleStatus>(),
+        .. AvailableModules.TimeControl ? [new ModuleStatus("Control de tiempo", Modules.TimeControl)] : Array.Empty<ModuleStatus>(),
     ];
 
     // ===== Sync triggers (api-contract §12): back on Home and every 5 min while Home is visible =====
@@ -280,6 +280,7 @@ public sealed partial class HomeViewModel : ObservableObject
         {
             // Modules first: they decide what the rest shows.
             Modules = await _modules.ModulesAsync();
+            AvailableModules = await _modules.AvailableModulesAsync();
             var types = _types.ServiceTypesAsync();
             var people = _people.PeopleAsync();
             var records = _records.RecordsAsync();
@@ -291,7 +292,8 @@ public sealed partial class HomeViewModel : ObservableObject
             ServiceTypes = await types;
             People = (await people).OrderBy(p => p.Name, StringComparer.Create(Spanish.Culture, ignoreCase: true)).ToList();
             RecordCount = (await records).Count;
-            Library = ((await lyrics).Count, (await music).Count, (await images).Count, (await videos).Count);
+            // Backgrounds are not library content (the web's Fondos section).
+            Library = ((await lyrics).Count, (await music).Count, (await images).Count(m => !m.IsBackground), (await videos).Count(m => !m.IsBackground));
             IsDisplayConnected = _display.ConnectedDisplay() is not null;
 
             if (SelectedServiceTypeId is not { } id || ServiceTypes.All(t => t.Id != id))
@@ -361,5 +363,4 @@ public sealed partial class HomeViewModel : ObservableObject
         OnPropertyChanged(nameof(TypeOptions));
     }
 
-    private string PersonName(Guid? id) => id is { } value ? People.FirstOrDefault(p => p.Id == value)?.Name ?? string.Empty : string.Empty;
 }

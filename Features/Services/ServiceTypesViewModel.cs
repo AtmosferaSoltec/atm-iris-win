@@ -55,18 +55,15 @@ public sealed record EditorResult(ServiceType? Saved, Guid? DeletedId);
 public sealed partial class ServiceTypesViewModel : ObservableObject
 {
     private readonly IServiceTypeRepository _types;
-    private readonly IPeopleRepository _people;
     private readonly IModuleSettingsRepository _modules;
     private readonly SignedInNavigator _navigator;
     private readonly SessionStore _session;
     private List<ServiceType> _all = [];
-    private IReadOnlyList<Person> _peopleList = [];
 
-    public ServiceTypesViewModel(IServiceTypeRepository types, IPeopleRepository people, IModuleSettingsRepository modules, SignedInNavigator navigator, SessionStore session)
+    public ServiceTypesViewModel(IServiceTypeRepository types, IModuleSettingsRepository modules, SignedInNavigator navigator, SessionStore session)
     {
         _session = session;
         _types = types;
-        _people = people;
         _modules = modules;
         _navigator = navigator;
     }
@@ -98,10 +95,7 @@ public sealed partial class ServiceTypesViewModel : ObservableObject
     {
         IsLoading = Cards.Count == 0;
         Modules = await _modules.ModulesAsync();
-        var types = _types.ServiceTypesAsync();
-        var people = _people.PeopleAsync();
-        _all = (await types).ToList();
-        _peopleList = await people;
+        _all = (await _types.ServiceTypesAsync()).ToList();
         Rebuild();
         IsLoading = false;
     }
@@ -122,7 +116,7 @@ public sealed partial class ServiceTypesViewModel : ObservableObject
     private void Edit(ServiceTypeCardViewModel card) => OpenEditor(card.Type);
 
     private void OpenEditor(ServiceType? type) =>
-        Editor = new ServiceTypeEditorViewModel(type, _all, Modules, _peopleList, _types, _people, OnEditorDone, CanManage);
+        Editor = new ServiceTypeEditorViewModel(type, _all, Modules, _types, OnEditorDone, CanManage);
 
     private void OnEditorDone(EditorResult? result)
     {
@@ -145,11 +139,7 @@ public sealed partial class ServiceTypesViewModel : ObservableObject
         }
 
         Rebuild();
-        _ = RefreshPeopleAsync();
     }
-
-    // The editor can add people; keep the next editor's leader list current.
-    private async Task RefreshPeopleAsync() => _peopleList = await _people.PeopleAsync();
 
     private void Rebuild()
     {

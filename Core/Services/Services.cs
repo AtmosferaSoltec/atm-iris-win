@@ -117,6 +117,10 @@ public interface ILibraryRepository
     Task<IReadOnlyList<LyricSheet>> LyricsAsync();
 
     Task<IReadOnlyList<MediaAsset>> MediaAsync(MediaKind kind);
+
+    /// <summary>Starts downloading music or videos added to a service (api-contract §11); they stay on this PC
+    /// afterwards. Images and backgrounds download on their own after each sync. Design data has nothing to fetch.</summary>
+    Task DownloadAsync(IEnumerable<Guid> ids) => Task.CompletedTask;
 }
 
 /// <summary>What to play. <see cref="Path"/> is the cached file; without it (design data) nothing real can play.</summary>
@@ -175,6 +179,19 @@ public interface IModuleSettingsRepository
     Task<ChurchModules> ModulesAsync();
 
     Task SaveAsync(ChurchModules modules);
+
+    /// <summary>Modules that exist in Iris today; one in <see langword="false"/> is not offered at
+    /// all, not even in Configuración (api-contract §6). Everything by default.</summary>
+    Task<ChurchModules> AvailableModulesAsync() => Task.FromResult(ChurchModules.All);
+}
+
+/// <summary>Typeface, size and default background of the projected lyrics (api-contract §6), same
+/// for every console of the church.</summary>
+public interface IProjectionSettingsRepository
+{
+    Task<ProjectionSettings> SettingsAsync();
+
+    Task SaveAsync(ProjectionSettings settings);
 }
 
 public interface IServiceTypeRepository

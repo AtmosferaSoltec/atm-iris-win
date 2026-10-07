@@ -37,10 +37,13 @@ Core/Models      Records: session, ServicePlan/ServiceItem/Slide, ProjectionFram
 Core/Services    Interfaces + Mocks/ (SampleData holds all demo data, incl. the 66-book Bible index)
 DesignSystem/    Themes/Tokens.xaml, Themes/Styles.xaml, IrisTheme/KindStyle/Glyphs, Motion, Controls/Iris*
 Shared/Projection/ProjectionCanvas — the ONE renderer for thumbnails, EN VIVO and the TV (1600×900 stage in a Viewbox)
-Features/        Auth, LiveConsole, Bible, AddToService (View + ViewModel each)
+Features/        Auth, Home, LiveConsole, Bible, AddToService, Modules (+ Proyección), Services, People, Times, Connection
+Scripts/MacCheck Checks from a Mac (Core tests, the app's C#, x:Bind paths); excluded from Iris.csproj
 ```
 
 `LiveConsoleViewModel` owns the presentation rules (spec §7): the service list only *opens* items; clicking a card/media stage *presents*. Every state change goes through `Changed()`, which refreshes derived properties and calls `IDisplayOutputService.Present(LiveFrame)`.
+
+Desktop layout (docs/plans/11): the console has a toolbar under the top bar and, from `IrisConsoleWideBreakpoint`, three columns (SERVICIO | workspace | EN VIVO + SIGUIENTE + mini player); narrower it falls back to the iPad's two. How the lyrics look (api-contract §6) lives in `Shared/Projection/ProjectionTypography`: every `ProjectionCanvas` follows it unless it gets its own `Typography` (the Proyección preview). Music and videos download only once added to a service (`IMediaCache.RequestAsync`); the console resolves each item's file by `ServiceItem.MediaId` when it plays or projects.
 
 ## Build & run
 

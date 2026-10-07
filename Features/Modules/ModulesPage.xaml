@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--  Módulos (IRIS_SPEC §6.6): one switch per module, saved immediately.  -->
+<!--
+    Módulos (IRIS_SPEC §6.6): one switch per module, saved immediately. Beside it, Proyección
+    (api-contract §6): the iPad opens it as a sheet from this screen; on a wide window both fit side by side.
+-->
 <Page
     x:Class="Iris.Features.Modules.ModulesPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -7,12 +10,13 @@
     xmlns:controls="using:Iris.DesignSystem.Controls"
     xmlns:design="using:Iris.DesignSystem"
     xmlns:modules="using:Iris.Features.Modules"
+    xmlns:projection="using:Iris.Shared.Projection"
     xmlns:shell="using:Iris.Shell"
     Background="Transparent">
 
     <Page.Resources>
         <DataTemplate x:Key="ModuleRowTemplate" x:DataType="modules:ModuleRowViewModel">
-            <StackPanel>
+            <StackPanel Visibility="{x:Bind IsAvailable, Mode=OneWay}">
                 <Rectangle Style="{StaticResource IrisDividerStyle}" Visibility="{x:Bind HasDivider}" />
                 <Grid Padding="0,16" ColumnSpacing="{StaticResource IrisSpacingMd}">
                     <Grid.ColumnDefinitions>
@@ -50,9 +54,126 @@
                 </Grid>
             </StackPanel>
         </DataTemplate>
+
+        <!--  Proyección: a typeface, drawn in its own font  -->
+        <DataTemplate x:Key="FontRowTemplate" x:DataType="modules:FontOptionViewModel">
+            <Button
+                HorizontalAlignment="Stretch"
+                HorizontalContentAlignment="Stretch"
+                AutomationProperties.Name="{x:Bind Name}"
+                Command="{x:Bind Owner.SelectFontCommand}"
+                CommandParameter="{x:Bind}"
+                Style="{StaticResource IrisPressableButtonStyle}">
+                <Grid
+                    Padding="{StaticResource IrisPaddingSm}"
+                    Background="{StaticResource IrisSurfaceBrush}"
+                    BorderBrush="{StaticResource IrisStrokeBrush}"
+                    BorderThickness="{StaticResource IrisHairline}"
+                    ColumnSpacing="{StaticResource IrisSpacingSm}"
+                    CornerRadius="{StaticResource IrisRadiusMd}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Border
+                        Grid.ColumnSpan="2"
+                        Margin="-12"
+                        BorderBrush="{StaticResource IrisAccentGradientBrush}"
+                        BorderThickness="{StaticResource IrisFocusStroke}"
+                        CornerRadius="{StaticResource IrisRadiusMd}"
+                        Visibility="{x:Bind IsSelected, Mode=OneWay}" />
+                    <TextBlock
+                        VerticalAlignment="Center"
+                        FontFamily="{x:Bind Font}"
+                        FontSize="{StaticResource IrisBodyFontSize}"
+                        Foreground="{StaticResource IrisTextPrimaryBrush}"
+                        Text="{x:Bind Name}"
+                        TextTrimming="CharacterEllipsis" />
+                    <controls:IrisCheckmark
+                        Grid.Column="1"
+                        VerticalAlignment="Center"
+                        IsChecked="{x:Bind IsSelected, Mode=OneWay}" />
+                </Grid>
+            </Button>
+        </DataTemplate>
+
+        <!--  Proyección: a quick-pick size  -->
+        <DataTemplate x:Key="FontSizeTemplate" x:DataType="modules:FontSizeOptionViewModel">
+            <Button
+                AutomationProperties.ItemStatus="{x:Bind modules:ModulesPage.SelectedStatus(IsSelected), Mode=OneWay}"
+                AutomationProperties.Name="{x:Bind Text}"
+                Command="{x:Bind Owner.SelectSizeCommand}"
+                CommandParameter="{x:Bind}"
+                Style="{StaticResource IrisPressableButtonStyle}">
+                <Grid
+                    MinWidth="{StaticResource IrisFontSizeChipWidth}"
+                    Height="{StaticResource IrisFontSizeChipHeight}"
+                    CornerRadius="{StaticResource IrisRadiusCapsulePill}">
+                    <Border Background="{StaticResource IrisSurfaceBrush}" />
+                    <Border Background="{StaticResource IrisAccentGradientBrush}" Visibility="{x:Bind IsSelected, Mode=OneWay}" />
+                    <TextBlock
+                        Margin="10,0"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Foreground="{x:Bind modules:ModulesPage.ChipForeground(IsSelected), Mode=OneWay}"
+                        Style="{StaticResource IrisNumberTextStyle}"
+                        Text="{x:Bind Text}" />
+                </Grid>
+            </Button>
+        </DataTemplate>
+
+        <!--  Proyección: "Ninguno" or a background  -->
+        <DataTemplate x:Key="DefaultBackgroundTemplate" x:DataType="modules:DefaultBackgroundOptionViewModel">
+            <Button
+                Width="{StaticResource IrisSwatchCellWidth}"
+                AutomationProperties.ItemStatus="{x:Bind modules:ModulesPage.SelectedStatus(IsSelected), Mode=OneWay}"
+                AutomationProperties.Name="{x:Bind Name}"
+                Command="{x:Bind Owner.SelectBackgroundCommand}"
+                CommandParameter="{x:Bind}"
+                Style="{StaticResource IrisPressableButtonStyle}">
+                <StackPanel Spacing="6">
+                    <Grid
+                        Width="{StaticResource IrisSwatchWidth}"
+                        Height="{StaticResource IrisSwatchHeight}"
+                        HorizontalAlignment="Center">
+                        <Border Background="{x:Bind Swatch}" CornerRadius="{StaticResource IrisRadiusSwatch}" />
+                        <Border
+                            BorderBrush="{StaticResource IrisStrokeBrush}"
+                            BorderThickness="{StaticResource IrisHairline}"
+                            CornerRadius="{StaticResource IrisRadiusSwatch}" />
+                        <Border
+                            BorderBrush="{StaticResource IrisSelectionRingBrush}"
+                            BorderThickness="{StaticResource IrisSelectionRingStroke}"
+                            CornerRadius="{StaticResource IrisRadiusSwatch}"
+                            Visibility="{x:Bind IsSelected, Mode=OneWay}" />
+                    </Grid>
+                    <TextBlock
+                        HorizontalAlignment="Center"
+                        Style="{StaticResource IrisCaptionTextStyle}"
+                        Text="{x:Bind Name}"
+                        TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+            </Button>
+        </DataTemplate>
     </Page.Resources>
 
     <Grid>
+        <VisualStateManager.VisualStateGroups>
+            <VisualStateGroup>
+                <VisualState x:Name="SideBySide">
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="{StaticResource IrisSettingsWideBreakpoint}" />
+                    </VisualState.StateTriggers>
+                    <VisualState.Setters>
+                        <Setter Target="SecondColumn.Width" Value="*" />
+                        <Setter Target="ProjectionCard.(Grid.Row)" Value="0" />
+                        <Setter Target="ProjectionCard.(Grid.Column)" Value="1" />
+                    </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Stacked" />
+            </VisualStateGroup>
+        </VisualStateManager.VisualStateGroups>
+
         <Grid.RowDefinitions>
             <RowDefinition Height="{StaticResource IrisTopBarRowHeight}" />
             <RowDefinition Height="*" />
@@ -61,33 +182,162 @@
         <shell:AppTopBar Title="Módulos" BackCommand="{x:Bind ViewModel.GoHomeCommand}" />
 
         <ScrollViewer Grid.Row="1">
-            <Border
-                MaxWidth="{StaticResource IrisSettingsColumnWidth}"
+            <Grid
+                MaxWidth="{StaticResource IrisSettingsPageMaxWidth}"
                 Margin="{StaticResource IrisPagePadding}"
-                Padding="{StaticResource IrisPaddingXl}"
                 VerticalAlignment="Top"
-                Style="{StaticResource IrisSurfaceStyle}">
-                <StackPanel Spacing="{StaticResource IrisSpacingLg}">
-                    <StackPanel Spacing="{StaticResource IrisSpacingXs}">
-                        <TextBlock
-                            AutomationProperties.HeadingLevel="Level1"
-                            Style="{StaticResource IrisHeadlineTextStyle}"
-                            Text="Módulos" />
-                        <TextBlock Style="{StaticResource IrisCalloutTextStyle}" Text="Elige qué partes de Iris usa tu iglesia. Lo que apagues desaparece de la consola." />
-                    </StackPanel>
+                ColumnSpacing="{StaticResource IrisSpacingLg}"
+                RowSpacing="{StaticResource IrisSpacingLg}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition x:Name="SecondColumn" Width="0" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
 
-                    <controls:IrisBanner Kind="Error" Message="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}" />
-                    <controls:IrisBanner Kind="Info" Message="{x:Bind ViewModel.ReadOnlyNote}" />
+                <!--  ===== Módulos =====  -->
+                <Border
+                    Padding="{StaticResource IrisPaddingXl}"
+                    VerticalAlignment="Top"
+                    Style="{StaticResource IrisSurfaceStyle}">
+                    <StackPanel Spacing="{StaticResource IrisSpacingLg}">
+                        <StackPanel Spacing="{StaticResource IrisSpacingXs}">
+                            <TextBlock
+                                AutomationProperties.HeadingLevel="Level1"
+                                Style="{StaticResource IrisHeadlineTextStyle}"
+                                Text="Módulos" />
+                            <TextBlock Style="{StaticResource IrisCalloutTextStyle}" Text="Elige qué partes de Iris usa tu iglesia. Lo que apagues desaparece de la consola." />
+                        </StackPanel>
 
-                    <StackPanel>
-                        <ItemsRepeater ItemTemplate="{StaticResource ModuleRowTemplate}" ItemsSource="{x:Bind ViewModel.Rows}" />
-                        <controls:IrisBanner
-                            Kind="Info"
-                            Message="Los tiempos guardados se conservan. Puedes volver a activarlo cuando quieras."
-                            Visibility="{x:Bind ViewModel.IsTimeControlOff, Mode=OneWay}" />
+                        <controls:IrisBanner Kind="Error" Message="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}" />
+                        <controls:IrisBanner Kind="Info" Message="{x:Bind ViewModel.ReadOnlyNote}" />
+
+                        <StackPanel>
+                            <ItemsRepeater ItemTemplate="{StaticResource ModuleRowTemplate}" ItemsSource="{x:Bind ViewModel.Rows}" />
+                            <controls:IrisBanner
+                                Kind="Info"
+                                Message="Los tiempos guardados se conservan. Puedes volver a activarlo cuando quieras."
+                                Visibility="{x:Bind ViewModel.IsTimeControlOff, Mode=OneWay}" />
+                        </StackPanel>
                     </StackPanel>
-                </StackPanel>
-            </Border>
+                </Border>
+
+                <!--  ===== Proyección =====  -->
+                <Border
+                    x:Name="ProjectionCard"
+                    Grid.Row="1"
+                    Padding="{StaticResource IrisPaddingXl}"
+                    VerticalAlignment="Top"
+                    Style="{StaticResource IrisSurfaceStyle}">
+                    <StackPanel Spacing="{StaticResource IrisSpacingLg}">
+                        <StackPanel Spacing="{StaticResource IrisSpacingXs}">
+                            <TextBlock
+                                AutomationProperties.HeadingLevel="Level1"
+                                Style="{StaticResource IrisHeadlineTextStyle}"
+                                Text="Proyección" />
+                            <TextBlock
+                                Style="{StaticResource IrisCalloutTextStyle}"
+                                Text="La tipografía, el tamaño y el fondo por defecto de la letra en el TV. Se aplican en todas las consolas de tu iglesia."
+                                TextWrapping="Wrap" />
+                        </StackPanel>
+
+                        <controls:IrisBanner Kind="Error" Message="{x:Bind ViewModel.Projection.ErrorMessage, Mode=OneWay}" />
+
+                        <Grid CornerRadius="{StaticResource IrisRadiusLg}">
+                            <projection:ProjectionCanvas
+                                AutomationProperties.Name="Vista previa de cómo se ve la letra en el TV"
+                                Frame="{x:Bind ViewModel.Projection.PreviewFrame, Mode=OneWay}"
+                                Typography="{x:Bind ViewModel.Projection.Settings, Mode=OneWay}" />
+                            <Border
+                                BorderBrush="{StaticResource IrisStrokeStrongBrush}"
+                                BorderThickness="{StaticResource IrisHairline}"
+                                CornerRadius="{StaticResource IrisRadiusLg}" />
+                        </Grid>
+
+                        <!--  Tipografía  -->
+                        <StackPanel Spacing="{StaticResource IrisSpacingSm}">
+                            <controls:IrisSectionHeader Title="Tipografía" />
+                            <ItemsRepeater ItemTemplate="{StaticResource FontRowTemplate}" ItemsSource="{x:Bind ViewModel.Projection.Fonts}">
+                                <ItemsRepeater.Layout>
+                                    <UniformGridLayout
+                                        ItemsStretch="Fill"
+                                        MinColumnSpacing="8"
+                                        MinItemWidth="{StaticResource IrisFontRowMinWidth}"
+                                        MinRowSpacing="8" />
+                                </ItemsRepeater.Layout>
+                            </ItemsRepeater>
+                        </StackPanel>
+
+                        <!--  Tamaño  -->
+                        <StackPanel Spacing="{StaticResource IrisSpacingSm}">
+                            <controls:IrisSectionHeader Title="Tamaño">
+                                <controls:IrisSectionHeader.Accessory>
+                                    <TextBlock Style="{StaticResource IrisNumberTextStyle}" Text="{x:Bind ViewModel.Projection.FontSizeText, Mode=OneWay}" />
+                                </controls:IrisSectionHeader.Accessory>
+                            </controls:IrisSectionHeader>
+                            <Grid ColumnSpacing="{StaticResource IrisSpacingSm}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <Button
+                                    VerticalAlignment="Center"
+                                    AutomationProperties.Name="Reducir tamaño"
+                                    Command="{x:Bind ViewModel.Projection.DecreaseFontSizeCommand}"
+                                    IsEnabled="{x:Bind ViewModel.Projection.CanDecreaseFontSize, Mode=OneWay}"
+                                    Style="{StaticResource IrisIconButtonStyle}"
+                                    ToolTipService.ToolTip="Reducir tamaño">
+                                    <FontIcon Glyph="&#xE738;" Style="{StaticResource IrisIconStyle}" />
+                                </Button>
+                                <ItemsRepeater
+                                    Grid.Column="1"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    ItemTemplate="{StaticResource FontSizeTemplate}"
+                                    ItemsSource="{x:Bind ViewModel.Projection.Sizes}">
+                                    <ItemsRepeater.Layout>
+                                        <StackLayout Orientation="Horizontal" Spacing="6" />
+                                    </ItemsRepeater.Layout>
+                                </ItemsRepeater>
+                                <Button
+                                    Grid.Column="2"
+                                    VerticalAlignment="Center"
+                                    AutomationProperties.Name="Aumentar tamaño"
+                                    Command="{x:Bind ViewModel.Projection.IncreaseFontSizeCommand}"
+                                    IsEnabled="{x:Bind ViewModel.Projection.CanIncreaseFontSize, Mode=OneWay}"
+                                    Style="{StaticResource IrisIconButtonStyle}"
+                                    ToolTipService.ToolTip="Aumentar tamaño">
+                                    <FontIcon Glyph="&#xE710;" Style="{StaticResource IrisIconStyle}" />
+                                </Button>
+                            </Grid>
+                            <TextBlock
+                                Style="{StaticResource IrisCaptionTextStyle}"
+                                Text="El tamaño se mide en una pantalla de 1920 de ancho; en una más grande o más chica se ve proporcional."
+                                TextWrapping="Wrap" />
+                        </StackPanel>
+
+                        <!--  Fondo al iniciar un servicio  -->
+                        <StackPanel Spacing="{StaticResource IrisSpacingSm}">
+                            <controls:IrisSectionHeader Title="Fondo al iniciar un servicio" />
+                            <TextBlock
+                                Style="{StaticResource IrisCaptionTextStyle}"
+                                Text="Lo que se ve en el TV hasta que pones una letra. «Ninguno» es pantalla negra."
+                                TextWrapping="Wrap" />
+                            <ItemsRepeater ItemTemplate="{StaticResource DefaultBackgroundTemplate}" ItemsSource="{x:Bind ViewModel.Projection.Backgrounds, Mode=OneWay}">
+                                <ItemsRepeater.Layout>
+                                    <UniformGridLayout
+                                        MinColumnSpacing="8"
+                                        MinItemWidth="{StaticResource IrisSwatchCellWidth}"
+                                        MinRowSpacing="12" />
+                                </ItemsRepeater.Layout>
+                            </ItemsRepeater>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </Grid>
         </ScrollViewer>
     </Grid>
 </Page>

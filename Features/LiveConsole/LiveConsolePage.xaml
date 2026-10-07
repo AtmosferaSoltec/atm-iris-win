@@ -90,6 +90,12 @@
                     </VisualState.StateTriggers>
                     <VisualState.Setters>
                         <Setter Target="SideColumn.Width" Value="{StaticResource IrisColumnWidthWide}" />
+                        <Setter Target="LiveColumn.Width" Value="{StaticResource IrisLiveColumnWidth}" />
+                        <Setter Target="ServicePanel.(Grid.RowSpan)" Value="2" />
+                        <Setter Target="LivePanel.(Grid.Row)" Value="0" />
+                        <Setter Target="LivePanel.(Grid.Column)" Value="2" />
+                        <Setter Target="LivePanel.(Grid.RowSpan)" Value="2" />
+                        <Setter Target="NextPreview.Visibility" Value="Visible" />
                     </VisualState.Setters>
                 </VisualState>
                 <VisualState x:Name="NarrowColumns" />
@@ -98,6 +104,7 @@
 
         <Grid.RowDefinitions>
             <RowDefinition Height="{StaticResource IrisTopBarRowHeight}" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
@@ -107,25 +114,126 @@
             BackCommand="{x:Bind ViewModel.RequestExitCommand}"
             Subtitle="{x:Bind ViewModel.ServiceDateText, Mode=OneWay}" />
 
-        <!--  ===== Body =====  -->
-        <Grid
+        <!--
+            ===== Toolbar (desktop): the console's main actions with their names, one click away. Groups:
+            service · TV screen. The right side is free for what comes next (the iPad keeps these as icons).
+        -->
+        <Border
             Grid.Row="1"
+            Margin="{StaticResource IrisConsoleToolbarMargin}"
+            Padding="{StaticResource IrisConsoleToolbarPadding}"
+            Style="{StaticResource IrisConsoleSurfaceStyle}">
+            <StackPanel
+                AutomationProperties.Name="Barra de herramientas"
+                Orientation="Horizontal"
+                Spacing="{StaticResource IrisSpacingSm}">
+                <Button
+                    AutomationProperties.Name="Agregar al servicio"
+                    Command="{x:Bind ViewModel.PresentAddToServiceCommand}"
+                    Style="{StaticResource IrisPillButtonStyle}"
+                    ToolTipService.ToolTip="Agregar al servicio (Ctrl+N)">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <FontIcon
+                            FontSize="{StaticResource IrisCaptionFontSize}"
+                            Glyph="&#xE710;"
+                            Style="{StaticResource IrisIconStyle}" />
+                        <TextBlock Text="Agregar" />
+                    </StackPanel>
+                </Button>
+                <Button
+                    AutomationProperties.Name="Biblia"
+                    Command="{x:Bind ViewModel.PresentBibleCommand}"
+                    Style="{StaticResource IrisPillButtonStyle}"
+                    ToolTipService.ToolTip="Biblia (Ctrl+B)"
+                    Visibility="{x:Bind ViewModel.ShowsBible, Mode=OneWay}">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <FontIcon
+                            FontSize="{StaticResource IrisCaptionFontSize}"
+                            Glyph="&#xE82D;"
+                            Style="{StaticResource IrisIconStyle}" />
+                        <TextBlock Text="Biblia" />
+                    </StackPanel>
+                </Button>
+
+                <Rectangle Margin="4,6" Style="{StaticResource IrisVerticalSeparatorStyle}" />
+
+                <ToggleButton
+                    AutomationProperties.Name="Limpiar pantalla"
+                    Command="{x:Bind ViewModel.ToggleClearScreenCommand}"
+                    IsChecked="{x:Bind ViewModel.IsScreenCleared, Mode=OneWay}"
+                    Style="{StaticResource IrisPillToggleButtonStyle}"
+                    ToolTipService.ToolTip="Limpiar pantalla (B)">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <FontIcon
+                            FontSize="{StaticResource IrisCaptionFontSize}"
+                            Glyph="&#xE75C;"
+                            Style="{StaticResource IrisIconStyle}" />
+                        <TextBlock Text="Limpiar pantalla" />
+                    </StackPanel>
+                </ToggleButton>
+                <Button
+                    x:Name="BackgroundButton"
+                    AutomationProperties.Name="Cambiar fondo"
+                    Style="{StaticResource IrisPillButtonStyle}"
+                    ToolTipService.ToolTip="Cambiar fondo">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <FontIcon
+                            FontSize="{StaticResource IrisCaptionFontSize}"
+                            Glyph="&#xE7AA;"
+                            Style="{StaticResource IrisIconStyle}" />
+                        <TextBlock Text="{x:Bind ViewModel.BackgroundButtonText, Mode=OneWay}" />
+                    </StackPanel>
+                    <Button.Flyout>
+                        <Flyout
+                            x:Name="BackgroundFlyout"
+                            FlyoutPresenterStyle="{StaticResource IrisFlyoutPresenterStyle}"
+                            Placement="BottomEdgeAlignedLeft">
+                            <StackPanel Spacing="{StaticResource IrisSpacingSm}">
+                                <controls:IrisSectionHeader Title="Fondos" />
+                                <ItemsRepeater
+                                    Width="316"
+                                    ItemTemplate="{StaticResource BackgroundSwatchTemplate}"
+                                    ItemsSource="{x:Bind ViewModel.Backgrounds, Mode=OneWay}">
+                                    <ItemsRepeater.Layout>
+                                        <UniformGridLayout
+                                            MaximumRowsOrColumns="3"
+                                            MinColumnSpacing="8"
+                                            MinItemWidth="{StaticResource IrisSwatchCellWidth}"
+                                            MinRowSpacing="12" />
+                                    </ItemsRepeater.Layout>
+                                </ItemsRepeater>
+                            </StackPanel>
+                        </Flyout>
+                    </Button.Flyout>
+                </Button>
+            </StackPanel>
+        </Border>
+
+        <!--  ===== Body =====  -->
+        <!--
+            Narrow window: SERVICIO over EN VIVO | workspace (the iPad layout).
+            Wide window (desktop): SERVICIO | workspace | EN VIVO + SIGUIENTE + mini player.
+        -->
+        <Grid
+            Grid.Row="2"
             Padding="{StaticResource IrisConsoleBodyPadding}"
-            ColumnSpacing="{StaticResource IrisSpacingMd}">
+            ColumnSpacing="{StaticResource IrisSpacingMd}"
+            RowSpacing="{StaticResource IrisSpacingMd}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition x:Name="SideColumn" Width="{StaticResource IrisColumnWidthNarrow}" />
                 <ColumnDefinition Width="*" />
+                <ColumnDefinition x:Name="LiveColumn" Width="0" />
             </Grid.ColumnDefinitions>
-
-            <!--  Column 1  -->
-            <Grid RowSpacing="{StaticResource IrisSpacingMd}">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="*" />
-                    <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
 
                 <!--  a) SERVICIO  -->
-                <Border Padding="{StaticResource IrisPaddingMd}" Style="{StaticResource IrisConsoleSurfaceStyle}">
+                <Border
+                    x:Name="ServicePanel"
+                    Padding="{StaticResource IrisPaddingMd}"
+                    Style="{StaticResource IrisConsoleSurfaceStyle}">
                     <Grid RowSpacing="{StaticResource IrisSpacingSm}">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
@@ -231,10 +339,12 @@
                     </Grid>
                 </Border>
 
-                <!--  b) EN VIVO + mini player  -->
+                <!--  b) EN VIVO (+ SIGUIENTE on a wide window) + mini player  -->
                 <Border
+                    x:Name="LivePanel"
                     Grid.Row="1"
                     Padding="{StaticResource IrisPaddingSm}"
+                    VerticalAlignment="Top"
                     Style="{StaticResource IrisConsoleSurfaceStyle}">
                     <StackPanel Spacing="{StaticResource IrisSpacingSm}">
                         <Grid AutomationProperties.Name="Pantalla en vivo" CornerRadius="{StaticResource IrisRadiusMd}">
@@ -248,6 +358,29 @@
                                 CornerRadius="{StaticResource IrisRadiusMd}" />
                             <controls:IrisLiveIndicator Margin="{StaticResource IrisPaddingXs}" Text="EN VIVO" />
                         </Grid>
+
+                        <!--  SIGUIENTE: the slide that → sends next (wide window only)  -->
+                        <StackPanel
+                            x:Name="NextPreview"
+                            Spacing="{StaticResource IrisSpacingXs}"
+                            Visibility="Collapsed">
+                            <controls:IrisSectionHeader Padding="4,0,0,0" Title="Siguiente" />
+                            <Grid
+                                AutomationProperties.Name="Siguiente diapositiva"
+                                CornerRadius="{StaticResource IrisRadiusMd}"
+                                Visibility="{x:Bind ViewModel.HasNextSlide, Mode=OneWay}">
+                                <projection:ProjectionCanvas DecodePixelWidth="{StaticResource IrisThumbnailDecodeWidth}" Frame="{x:Bind ViewModel.NextFrame, Mode=OneWay}" />
+                                <Border
+                                    BorderBrush="{StaticResource IrisStrokeBrush}"
+                                    BorderThickness="{StaticResource IrisHairline}"
+                                    CornerRadius="{StaticResource IrisRadiusMd}" />
+                            </Grid>
+                            <TextBlock
+                                Padding="4,0"
+                                Style="{StaticResource IrisCaptionTextStyle}"
+                                Text="{x:Bind ViewModel.NextSlideHint, Mode=OneWay}"
+                                TextWrapping="Wrap" />
+                        </StackPanel>
 
                         <!--  Mini player: only while music or video is loaded  -->
                         <StackPanel
@@ -364,10 +497,12 @@
                         </StackPanel>
                     </StackPanel>
                 </Border>
-            </Grid>
 
-            <!--  Column 2: block timer (when the service tracks time) + workspace  -->
-            <Grid Grid.Column="1" RowSpacing="{StaticResource IrisSpacingMd}">
+            <!--  Workspace: block timer (when the service tracks time) + the open item  -->
+            <Grid
+                Grid.RowSpan="2"
+                Grid.Column="1"
+                RowSpacing="{StaticResource IrisSpacingMd}">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
@@ -426,56 +561,6 @@
                                     ToolTipService.ToolTip="Versículo siguiente (→)"
                                     Visibility="{x:Bind ViewModel.IsShowingScripture, Mode=OneWay}">
                                     <FontIcon Glyph="&#xE76C;" Style="{StaticResource IrisIconStyle}" />
-                                </Button>
-                                <Rectangle
-                                    Margin="4,0"
-                                    Style="{StaticResource IrisVerticalSeparatorStyle}"
-                                    Visibility="{x:Bind ViewModel.IsShowingScripture, Mode=OneWay}" />
-
-                                <ToggleButton
-                                    AutomationProperties.Name="Limpiar pantalla"
-                                    Command="{x:Bind ViewModel.ToggleClearScreenCommand}"
-                                    IsChecked="{x:Bind ViewModel.IsScreenCleared, Mode=OneWay}"
-                                    Style="{StaticResource IrisIconToggleButtonStyle}"
-                                    ToolTipService.ToolTip="Limpiar pantalla (B)">
-                                    <FontIcon Glyph="&#xE75C;" Style="{StaticResource IrisIconStyle}" />
-                                </ToggleButton>
-                                <Button
-                                    x:Name="BackgroundButton"
-                                    AutomationProperties.Name="Cambiar fondo"
-                                    Style="{StaticResource IrisIconButtonStyle}"
-                                    ToolTipService.ToolTip="Cambiar fondo">
-                                    <FontIcon Glyph="&#xE7AA;" Style="{StaticResource IrisIconStyle}" />
-                                    <Button.Flyout>
-                                        <Flyout
-                                            x:Name="BackgroundFlyout"
-                                            FlyoutPresenterStyle="{StaticResource IrisFlyoutPresenterStyle}"
-                                            Placement="BottomEdgeAlignedRight">
-                                            <StackPanel Spacing="{StaticResource IrisSpacingSm}">
-                                                <controls:IrisSectionHeader Title="Fondos" />
-                                                <ItemsRepeater
-                                                    Width="316"
-                                                    ItemTemplate="{StaticResource BackgroundSwatchTemplate}"
-                                                    ItemsSource="{x:Bind ViewModel.Backgrounds, Mode=OneWay}">
-                                                    <ItemsRepeater.Layout>
-                                                        <UniformGridLayout
-                                                            MaximumRowsOrColumns="3"
-                                                            MinColumnSpacing="8"
-                                                            MinItemWidth="{StaticResource IrisSwatchCellWidth}"
-                                                            MinRowSpacing="12" />
-                                                    </ItemsRepeater.Layout>
-                                                </ItemsRepeater>
-                                            </StackPanel>
-                                        </Flyout>
-                                    </Button.Flyout>
-                                </Button>
-                                <Button
-                                    AutomationProperties.Name="Biblia"
-                                    Command="{x:Bind ViewModel.PresentBibleCommand}"
-                                    Style="{StaticResource IrisIconButtonStyle}"
-                                    ToolTipService.ToolTip="Biblia (Ctrl+B)"
-                                    Visibility="{x:Bind ViewModel.ShowsBible, Mode=OneWay}">
-                                    <FontIcon Glyph="&#xE82D;" Style="{StaticResource IrisIconStyle}" />
                                 </Button>
                                 <Button
                                     AutomationProperties.Name="Editar"
@@ -550,7 +635,30 @@
                                     Command="{x:Bind ViewModel.PresentSelectedMediaCommand}"
                                     Content="{x:Bind ViewModel.MediaButtonText, Mode=OneWay}"
                                     IsEnabled="{x:Bind ViewModel.CanPresentSelectedMedia, Mode=OneWay}"
-                                    Style="{StaticResource IrisPrimaryButtonStyle}" />
+                                    Style="{StaticResource IrisPrimaryButtonStyle}"
+                                    Visibility="{x:Bind ViewModel.IsOpenMediaReady, Mode=OneWay}" />
+                                <!--  Music and videos added before their file is here (api-contract §11)  -->
+                                <Button
+                                    Width="{StaticResource IrisMediaStageButtonWidth}"
+                                    HorizontalAlignment="Center"
+                                    IsEnabled="False"
+                                    Style="{StaticResource IrisPrimaryButtonStyle}"
+                                    Visibility="{x:Bind ViewModel.IsOpenMediaDownloading, Mode=OneWay}">
+                                    <StackPanel Orientation="Horizontal" Spacing="{StaticResource IrisSpacingXs}">
+                                        <ProgressRing
+                                            Width="16"
+                                            Height="16"
+                                            IsActive="{x:Bind ViewModel.IsOpenMediaDownloading, Mode=OneWay}" />
+                                        <TextBlock Text="{x:Bind ViewModel.MediaDownloadText, Mode=OneWay}" />
+                                    </StackPanel>
+                                </Button>
+                                <Button
+                                    Width="{StaticResource IrisMediaStageButtonWidth}"
+                                    HorizontalAlignment="Center"
+                                    Command="{x:Bind ViewModel.RetryMediaDownloadCommand}"
+                                    Content="Reintentar descarga"
+                                    Style="{StaticResource IrisPrimaryButtonStyle}"
+                                    Visibility="{x:Bind ViewModel.IsOpenMediaFailed, Mode=OneWay}" />
                                 <TextBlock
                                     MaxWidth="{StaticResource IrisReadableWidth}"
                                     HorizontalAlignment="Center"

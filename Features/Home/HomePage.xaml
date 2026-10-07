@@ -36,13 +36,11 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <Ellipse Fill="{x:Bind design:Spectrum.Brush(Index)}" Style="{StaticResource IrisStatusDotStyle}" />
-                <StackPanel Grid.Column="1" Spacing="2">
-                    <TextBlock Style="{StaticResource IrisCalloutEmphasizedTextStyle}" Text="{x:Bind Name}" />
-                    <TextBlock
-                        Style="{StaticResource IrisCaptionTextStyle}"
-                        Text="{x:Bind Leader}"
-                        Visibility="{x:Bind HasLeader}" />
-                </StackPanel>
+                <TextBlock
+                    Grid.Column="1"
+                    VerticalAlignment="Center"
+                    Style="{StaticResource IrisCalloutEmphasizedTextStyle}"
+                    Text="{x:Bind Name}" />
                 <TextBlock
                     Grid.Column="2"
                     VerticalAlignment="Center"

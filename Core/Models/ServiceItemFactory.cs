@@ -10,7 +10,9 @@ public static class ServiceItemFactory
     public static ServiceItem FromLyrics(LyricSheet sheet) =>
         new(Guid.NewGuid(), ServiceItemKind.Song, sheet.Title, sheet.Author, sheet.Sections.Select(s => s with { Id = Guid.NewGuid() }).ToList());
 
-    public static ServiceItem FromMedia(MediaAsset asset) => asset.Kind switch
+    public static ServiceItem FromMedia(MediaAsset asset) => FromMediaCore(asset) with { MediaId = asset.Id };
+
+    private static ServiceItem FromMediaCore(MediaAsset asset) => asset.Kind switch
     {
         MediaKind.Music => new(Guid.NewGuid(), ServiceItemKind.Music, asset.Title,
             $"{asset.Subtitle} · {DurationText.Format(asset.Duration ?? TimeSpan.Zero)}",

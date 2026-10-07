@@ -42,6 +42,10 @@ public sealed partial class ModuleRowViewModel(ModuleKind kind, string title, st
     [ObservableProperty]
     public partial bool IsOn { get; set; }
 
+    /// <summary>A module switched off for all of Iris is not offered at all, not even its switch (api-contract §6).</summary>
+    [ObservableProperty]
+    public partial bool IsAvailable { get; set; } = true;
+
     /// <summary>Sets the value coming from the view model without saving again.</summary>
     public void Sync(bool isOn)
     {
@@ -69,8 +73,9 @@ public sealed partial class ModulesViewModel : ObservableObject
     private readonly SignedInNavigator _navigator;
     private readonly SessionStore _session;
 
-    public ModulesViewModel(IModuleSettingsRepository repository, SignedInNavigator navigator, SessionStore session)
+    public ModulesViewModel(IModuleSettingsRepository repository, SignedInNavigator navigator, SessionStore session, ProjectionSettingsViewModel projection)
     {
+        Projection = projection;
         _session = session;
         _repository = repository;
         _navigator = navigator;
@@ -85,6 +90,12 @@ public sealed partial class ModulesViewModel : ObservableObject
     }
 
     public IReadOnlyList<ModuleRowViewModel> Rows { get; }
+
+    /// <summary>Typeface, size and default background of the lyrics, beside the modules (the iPad opens it as a sheet).</summary>
+    public ProjectionSettingsViewModel Projection { get; }
+
+    /// <summary>Modules that exist in Iris today; the rest are hidden.</summary>
+    public ChurchModules AvailableModules { get; private set; } = ChurchModules.All;
 
     /// <summary>Only <see cref="Permission.ModulesManage"/> may switch modules (api-contract §3).</summary>
     public bool CanManage => _session.Can(Permission.ModulesManage);
@@ -110,9 +121,16 @@ public sealed partial class ModulesViewModel : ObservableObject
     private async Task LoadAsync()
     {
         IsLoading = true;
+        AvailableModules = await _repository.AvailableModulesAsync();
         Modules = await _repository.ModulesAsync();
+        foreach (var row in Rows)
+        {
+            row.IsAvailable = row.Kind == ModuleKind.Lyrics || Value(AvailableModules, row.Kind);
+        }
+
         Sync();
         IsLoading = false;
+        await Projection.LoadCommand.ExecuteAsync(null);
     }
 
     [RelayCommand]

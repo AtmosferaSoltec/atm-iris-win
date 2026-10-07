@@ -104,20 +104,16 @@ public class RepositoryTests
     }
 
     [Fact]
-    public async Task Deleting_a_person_clears_them_from_templates_locally_and_on_the_server()
+    public async Task Deleting_a_person_removes_them_locally_and_on_the_server()
     {
         using var s = await ReadyAsync();
         var people = new LivePeopleRepository(s.Data);
-        var types = new LiveServiceTypeRepository(s.Data);
         var daniel = (await people.PeopleAsync()).Single(p => p.Name == "Daniel Ruiz");
 
         await people.DeleteAsync(daniel.Id);
-        var localType = (await types.ServiceTypesAsync()).Single(t => t.Name == "Culto general");
-        Assert.DoesNotContain(localType.Blocks, b => b.DefaultPersonId == daniel.Id);
+        Assert.DoesNotContain(await people.PeopleAsync(), p => p.Id == daniel.Id);
 
         await s.Engine.SyncNowAsync(SyncReason.Write);
-        var serverType = FakeRows.Live(s.Stack.Fake.Db, s.ChurchId, FakeKind.ServiceTypes, IrisJsonContext.Default.ServiceTypeDto).Single(t => t.Name == "Culto general");
-        Assert.DoesNotContain(serverType.Blocks, b => b.DefaultPersonId == daniel.Id);
         Assert.DoesNotContain(ServerPeople(s), p => p.Id == daniel.Id);
     }
 
@@ -126,7 +122,7 @@ public class RepositoryTests
     {
         using var s = await ReadyAsync();
         var types = new LiveServiceTypeRepository(s.Data);
-        var created = new ServiceType(Guid.NewGuid(), "Oración", "#3DDC97", new ServiceSchedule(4, 19, 30), [new BlockTemplate(Guid.NewGuid(), "Intercesión", 20, null)]);
+        var created = new ServiceType(Guid.NewGuid(), "Oración", "#3DDC97", new ServiceSchedule(4, 19, 30), [new BlockTemplate(Guid.NewGuid(), "Intercesión", 20)]);
         await types.SaveAsync(created);
         await s.Engine.SyncNowAsync(SyncReason.Write);
         await types.SaveAsync(created with { Color = "#FF7A59" });
@@ -142,23 +138,19 @@ public class RepositoryTests
     [Fact]
     public async Task A_write_the_server_refuses_is_dropped_reported_and_healed()
     {
-        using var s = await ReadyAsync("operador@vidanueva.org");
+        using var s = await ReadyAsync();
         var types = new LiveServiceTypeRepository(s.Data);
         var discarded = new List<DiscardedWrite>();
         s.Engine.WriteDiscarded += (_, d) => discarded.Add(d);
-        var forbidden = 0;
-        s.Engine.PermissionsMayHaveChanged += (_, _) => forbidden++;
 
-        // The operator has no serviceTypes.manage: the server answers 403 to the queued PUT.
-        var type = new ServiceType(Guid.NewGuid(), "Solo local", "#FFB547", null, []);
+        // A name over 60 characters: the copy takes it, the server answers 400 to the queued PUT.
+        var type = new ServiceType(Guid.NewGuid(), new string('x', 61), "#FFB547", null, []);
         await types.SaveAsync(type);
         await s.Engine.SyncNowAsync(SyncReason.Write);
         await s.Engine.SyncNowAsync(SyncReason.Manual);
 
         Assert.Single(discarded);
-        Assert.Equal(403, discarded[0].StatusCode);
-        Assert.Equal("Solo local", discarded[0].Label);
-        Assert.Equal(1, forbidden);
+        Assert.Equal(400, discarded[0].StatusCode);
         Assert.Equal(0, await s.Outbox.CountAsync());
         Assert.DoesNotContain(await types.ServiceTypesAsync(), t => t.Id == type.Id);
     }
@@ -168,27 +160,20 @@ public class RepositoryTests
     {
         using var s = await ReadyAsync();
         var modules = new LiveModuleSettingsRepository(s.Data);
-        Assert.Equal(ChurchModules.All, await modules.ModulesAsync());
+
+        // The Bible is off for all of Iris (api-contract §6): it comes off and is not offered.
+        Assert.Equal(new ChurchModules(false, true, true), await modules.ModulesAsync());
+        Assert.Equal(new ChurchModules(false, true, true), await modules.AvailableModulesAsync());
 
         await modules.SaveAsync(new ChurchModules(false, true, false));
         await s.Engine.SyncNowAsync(SyncReason.Write);
 
         Assert.Equal(new ChurchModules(false, true, false), await modules.ModulesAsync());
         var server = s.Stack.Fake.Db.Churches.Single(c => c.Id == s.ChurchId);
-        Assert.False(server.Bible);
+        Assert.True(server.Bible); // the church's own choice is kept for when the Bible comes back
         Assert.False(server.TimeControl);
     }
 
-    [Fact]
-    public async Task Operator_cannot_change_modules()
-    {
-        using var s = await ReadyAsync("operador@vidanueva.org");
-        var token = s.Stack.Auth.CurrentAccessToken;
-
-        var response = await s.Stack.Fake.SendRawAsync(HttpMethod.Put, "church/modules", "{\"bible\":false,\"multimedia\":true,\"timeControl\":true}", token);
-
-        Assert.Equal(System.Net.HttpStatusCode.Forbidden, response.StatusCode);
-    }
 
     [Fact]
     public async Task People_sort_in_spanish_order()
@@ -204,5 +189,64 @@ public class RepositoryTests
         Assert.Equal(names.OrderBy(n => n, Iris.Core.Formatting.Spanish.Comparer).ToList(), names);
         Assert.Equal("zacarías Peña", names[^1]);
         Assert.True(names.IndexOf("Álvaro Díaz") < names.IndexOf("Carlos Pérez"));
+    }
+
+    [Fact]
+    public async Task Projection_settings_are_saved_through_the_queue_and_come_back_with_sync()
+    {
+        using var s = await ReadyAsync();
+        var projection = new LiveProjectionSettingsRepository(s.Data);
+        Assert.Equal(ProjectionSettings.Default, await projection.SettingsAsync());
+
+        var chosen = new ProjectionSettings(ProjectionFontFamily.Georgia, 112, "aurora");
+        await projection.SaveAsync(chosen);
+        Assert.Equal(chosen, await projection.SettingsAsync());
+        await s.Engine.SyncNowAsync(SyncReason.Write);
+
+        var server = s.Stack.Fake.Db.Churches.Single(c => c.Id == s.ChurchId);
+        Assert.Equal("georgia", server.ProjectionFontFamily);
+        Assert.Equal(112, server.ProjectionFontSizePt);
+        Assert.Equal("aurora", server.ProjectionDefaultBackgroundId);
+
+        // Another console changed it: the next sync brings it here.
+        server.ProjectionFontSizePt = 64;
+        server.Version = s.Stack.Fake.Db.NextVersion();
+        await s.Engine.SyncNowAsync(SyncReason.Manual);
+        Assert.Equal(64, (await projection.SettingsAsync()).FontSizePt);
+    }
+
+    [Fact]
+    public async Task An_unknown_font_key_falls_back_to_the_recommended_one()
+    {
+        Assert.Equal(ProjectionFontFamily.System, Mapping.ParseFontFamily("comicSans"));
+        Assert.Equal("avenirNext", Mapping.ToWire(ProjectionFontFamily.AvenirNext));
+
+        using var s = await ReadyAsync();
+        var bad = await s.Stack.Fake.SendRawAsync(HttpMethod.Put, "church/projection", "{\"fontFamily\":\"system\",\"fontSizePt\":300,\"defaultBackgroundId\":null}", s.Stack.Auth.CurrentAccessToken);
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, bad.StatusCode);
+    }
+
+    [Fact]
+    public async Task The_church_reports_storage_by_section_and_media_filters_by_several_kinds()
+    {
+        using var s = await ReadyAsync();
+        var token = s.Stack.Auth.CurrentAccessToken;
+
+        var church = await s.Stack.Fake.SendRawAsync(HttpMethod.Get, "church", null, token);
+        var storage = System.Text.Json.JsonDocument.Parse(await church.Content.ReadAsStringAsync()).RootElement.GetProperty("data").GetProperty("storage");
+        var breakdown = storage.GetProperty("breakdown");
+        var music = breakdown.GetProperty("musicBytes").GetInt64();
+        var backgrounds = breakdown.GetProperty("backgroundBytes").GetInt64();
+        var media = breakdown.GetProperty("mediaBytes").GetInt64();
+        Assert.True(music > 0 && backgrounds > 0 && media > 0);
+        Assert.Equal(music + backgrounds + media, storage.GetProperty("usedBytes").GetInt64());
+
+        var list = await s.Stack.Fake.SendRawAsync(HttpMethod.Get, "media?kind=image,video", null, token);
+        var items = System.Text.Json.JsonDocument.Parse(await list.Content.ReadAsStringAsync()).RootElement.GetProperty("data");
+        Assert.All(items.EnumerateArray(), m => Assert.NotEqual("audio", m.GetProperty("kind").GetString()));
+        Assert.Equal(2, items.GetArrayLength());
+
+        var wrong = await s.Stack.Fake.SendRawAsync(HttpMethod.Get, "media?kind=image,gif", null, token);
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, wrong.StatusCode);
     }
 }

@@ -37,17 +37,13 @@ public sealed partial class LibraryEntryViewModel : ObservableObject
 
     public string? FirstLine { get; private init; }
 
-    public string? Copyright { get; private init; }
-
-    public bool HasCopyright => !string.IsNullOrEmpty(Copyright);
-
     public string? Duration { get; private init; }
 
     public IReadOnlyList<string> Artwork { get; private init; } = ["#15151F", "#07070B"];
 
     public Guid? MediaId => _asset?.Id;
 
-    /// <summary>Media that is not on this PC yet cannot be added: its cell shows the download instead.</summary>
+    /// <summary>The file is on this PC. Media that is not can still be added: adding it starts the download.</summary>
     public bool IsAvailable => _asset?.IsAvailable ?? true;
 
     public bool IsUnavailable => !IsAvailable;
@@ -56,7 +52,7 @@ public sealed partial class LibraryEntryViewModel : ObservableObject
     {
         MediaAvailability.Downloading => $"Descargando… {(int)Math.Round(_asset.Progress * 100)} %",
         MediaAvailability.Failed => "No se pudo descargar",
-        MediaAvailability.NotDownloaded => "En espera de descarga",
+        MediaAvailability.NotDownloaded => "En la nube",
         _ => string.Empty,
     };
 
@@ -97,7 +93,6 @@ public sealed partial class LibraryEntryViewModel : ObservableObject
         new(ServiceItemKind.Song, sheet.Title, sheet.Author, () => ServiceItemFactory.FromLyrics(sheet), owner)
         {
             FirstLine = sheet.FirstLine,
-            Copyright = sheet.Copyright,
             // Title, author and the text of every section, without accents or case (api-contract §10).
             SearchKey = BiblePickerViewModel.Normalize($"{sheet.Title} {sheet.Author} {string.Join(' ', sheet.Sections.Select(s => (s.Content as TextContent)?.Body))}"),
         };
@@ -154,7 +149,7 @@ public sealed partial class AddToServiceViewModel : ObservableObject, IDisposabl
     public IList<string> Tabs { get; }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsRowTab), nameof(IsTileTab))]
+    [NotifyPropertyChangedFor(nameof(IsRowTab), nameof(IsTileTab), nameof(ShowsMusicHint))]
     public partial int TabIndex { get; set; }
 
     /// <summary>Letras and Música render as rows; Imágenes and Videos as tiles.</summary>
@@ -184,7 +179,15 @@ public sealed partial class AddToServiceViewModel : ObservableObject, IDisposabl
         _ => "Aún no hay videos",
     };
 
-    public string EmptyMessage => IsSearching ? "Prueba con otro título, autor o descripción." : "Agrégalas desde la web de Iris.";
+    public string EmptyMessage => IsSearching ? "Prueba con otro título, autor o descripción." : TabIndex switch
+    {
+        0 => "Agrégalas desde la web de Iris.",
+        1 => "Sube tus pistas (MP3, M4A, WAV…) desde la web de Iris, en Música.",
+        _ => "Súbelos desde la web de Iris, en Multimedia.",
+    };
+
+    /// <summary>Música: where the tracks come from and when they reach this PC.</summary>
+    public bool ShowsMusicHint => TabIndex == 1;
 
     public int SelectedCount => _selection.Count;
 
@@ -201,8 +204,9 @@ public sealed partial class AddToServiceViewModel : ObservableObject, IDisposabl
             var images = _library.MediaAsync(MediaKind.Image);
             var videos = _library.MediaAsync(MediaKind.Video);
             _tabs[1] = (await music).Select(m => LibraryEntryViewModel.FromMedia(m, this)).ToList();
-            _tabs[2] = (await images).Select(m => LibraryEntryViewModel.FromMedia(m, this)).ToList();
-            _tabs[3] = (await videos).Select(m => LibraryEntryViewModel.FromMedia(m, this)).ToList();
+            // Backgrounds belong to the background picker, not to the library (the web's Fondos section).
+            _tabs[2] = (await images).Where(m => !m.IsBackground).Select(m => LibraryEntryViewModel.FromMedia(m, this)).ToList();
+            _tabs[3] = (await videos).Where(m => !m.IsBackground).Select(m => LibraryEntryViewModel.FromMedia(m, this)).ToList();
         }
         IsLoading = false;
         Filter();
@@ -263,11 +267,6 @@ public sealed partial class AddToServiceViewModel : ObservableObject, IDisposabl
     [RelayCommand]
     private void Toggle(LibraryEntryViewModel entry)
     {
-        if (!entry.IsAvailable)
-        {
-            return;
-        }
-
         entry.IsSelected = !entry.IsSelected;
         if (entry.IsSelected)
         {

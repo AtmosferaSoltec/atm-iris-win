@@ -67,7 +67,8 @@ public sealed class BlockTimer
     public BlockTimer(IEnumerable<BlockTemplate> template)
     {
         _blocks = template
-            .Select(t => new TimerBlock(t.Id, t.Name, t.PlannedMinutes * 60, t.DefaultPersonId, OriginalName: t.Name, OriginalPlannedSeconds: t.PlannedMinutes * 60))
+            // No suggested leader anymore (api-contract §9): it rotates weekly, chosen fresh each time.
+            .Select(t => new TimerBlock(t.Id, t.Name, t.PlannedMinutes * 60, PersonId: null, OriginalName: t.Name, OriginalPlannedSeconds: t.PlannedMinutes * 60))
             .ToList();
         _templateOrder = _blocks.Select(b => b.Id).ToList();
     }
@@ -281,16 +282,9 @@ public sealed class BlockTimer
                 ran ? BlockStatus.Completed : BlockStatus.Skipped);
         }).ToList(), serviceTypeName);
 
-    /// <summary>
-    /// "Guardar en la plantilla": today's order, names and minutes without the skipped ones.
-    /// Blocks added today take today's leader as the suggested one; the rest keep the template's.
-    /// </summary>
-    public IReadOnlyList<BlockTemplate> UpdatedTemplate(IReadOnlyList<BlockTemplate> original) => _blocks
+    /// <summary>"Guardar en la plantilla": today's order, names and minutes without the skipped ones.</summary>
+    public IReadOnlyList<BlockTemplate> UpdatedTemplate() => _blocks
         .Where(b => !b.IsSkipped)
-        .Select(b => new BlockTemplate(
-            b.Id,
-            b.Name,
-            b.PlannedSeconds / 60,
-            b.IsAddedToday ? b.PersonId : original.FirstOrDefault(t => t.Id == b.Id)?.DefaultPersonId))
+        .Select(b => new BlockTemplate(b.Id, b.Name, b.PlannedSeconds / 60))
         .ToList();
 }

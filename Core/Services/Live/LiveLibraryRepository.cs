@@ -30,6 +30,8 @@ public sealed class LiveLibraryRepository(LiveData data, IMediaCache cache) : IL
             .Select(m => Mapping.ToModel(m, cache.StateOf(m)))
             .ToList();
     }
+
+    public Task DownloadAsync(IEnumerable<Guid> ids) => cache.RequestAsync(ids);
 }
 
 /// <summary>The six built-in gradients plus the church's pictures marked as backgrounds that are already on this PC.</summary>

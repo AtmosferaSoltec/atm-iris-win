@@ -7,17 +7,8 @@ using Iris.Core.Networking.Dto;
 
 namespace Iris.Core.Networking.Fake;
 
-public sealed class FakeMembership
-{
-    public Guid ChurchId { get; set; }
-
-    public string Role { get; set; } = "operator";
-
-    public bool Active { get; set; } = true;
-
-    public DateTimeOffset JoinedAt { get; set; }
-}
-
+// api-contract §3: one account per church, no roles, no team. A user belongs to exactly one
+// church for its whole life (same as the real `users.church_id` column).
 public sealed class FakeUser
 {
     public Guid Id { get; set; }
@@ -28,9 +19,7 @@ public sealed class FakeUser
 
     public string Password { get; set; } = string.Empty;
 
-    public Guid? LastChurchId { get; set; }
-
-    public List<FakeMembership> Memberships { get; set; } = [];
+    public Guid ChurchId { get; set; }
 }
 
 public sealed class FakeChurchRow
@@ -46,6 +35,15 @@ public sealed class FakeChurchRow
     public bool Multimedia { get; set; } = true;
 
     public bool TimeControl { get; set; } = true;
+
+    /// <summary>One of the 10 keys of api-contract §6; translated to a real Windows font in the UI layer.</summary>
+    public string ProjectionFontFamily { get; set; } = "system";
+
+    /// <summary>Referred to a 1920-wide screen; every surface scales it proportionally (api-contract §6).</summary>
+    public int ProjectionFontSizePt { get; set; } = 88;
+
+    /// <summary>A gradient key or a media asset id; null shows black. Not validated: a dangling id just falls back to black.</summary>
+    public string? ProjectionDefaultBackgroundId { get; set; }
 
     public long UsedBytes { get; set; }
 
@@ -108,6 +106,22 @@ public sealed class FakeDb
 
     public bool Seeded { get; set; }
 
+    /// <summary>
+    /// Shape of the saved file. A file of an older shape (users with roles and several churches, before api-contract §3
+    /// went to one account per church) is thrown away and reseeded. Bump it whenever the rows change shape.
+    /// </summary>
+    public const int CurrentSchema = 2;
+
+    /// <summary>0 in a file saved before the schema existed (the property is missing there).</summary>
+    public int Schema { get; set; }
+
+    /// <summary>
+    /// Mirrors the real `system_features` table: a switch above every church's own modules
+    /// (api-contract §6). Off, like the deployed API today: the Bible is hidden everywhere (no switch
+    /// in Módulos, no button in the console). Set it to `true` to work on the Bible screens.
+    /// </summary>
+    public bool SystemBibleEnabled { get; set; }
+
     public List<FakeUser> Users { get; set; } = [];
 
     public List<FakeChurchRow> Churches { get; set; } = [];
@@ -136,7 +150,7 @@ public sealed class FakeDbStore(string? path)
             try
             {
                 var db = JsonSerializer.Deserialize(File.ReadAllText(path), FakeJsonContext.Default.FakeDb);
-                if (db is { Seeded: true })
+                if (db is { Seeded: true, Schema: FakeDb.CurrentSchema })
                 {
                     return db;
                 }
@@ -146,7 +160,7 @@ public sealed class FakeDbStore(string? path)
             }
         }
 
-        var fresh = new FakeDb();
+        var fresh = new FakeDb { Schema = FakeDb.CurrentSchema };
         FakeSeed.Fill(fresh);
         Save(fresh);
         return fresh;

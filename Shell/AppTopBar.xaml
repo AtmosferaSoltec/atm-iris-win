@@ -210,8 +210,6 @@
                             <FontIcon Foreground="{StaticResource IrisDangerBrush}" Glyph="&#xE7E8;" />
                         </MenuFlyoutItem.Icon>
                     </MenuFlyoutItem>
-                    <MenuFlyoutSeparator />
-                    <MenuFlyoutItem IsEnabled="False" Text="El equipo se administra desde la web." />
                 </MenuFlyout>
             </Button.Flyout>
         </Button>

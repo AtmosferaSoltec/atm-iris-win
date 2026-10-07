@@ -45,6 +45,13 @@ public sealed partial class ProjectionCanvas : UserControl
     public static readonly DependencyProperty VideoRoleProperty =
         DependencyProperty.Register(nameof(VideoRole), typeof(VideoSurfaceRole), typeof(ProjectionCanvas), new PropertyMetadata(VideoSurfaceRole.None));
 
+    /// <summary>
+    /// How the lyrics look here. Null (everywhere but the Proyección preview) follows
+    /// <see cref="ProjectionTypography.Current"/>, so thumbnails, EN VIVO and the TV always match.
+    /// </summary>
+    public static readonly DependencyProperty TypographyProperty =
+        DependencyProperty.Register(nameof(Typography), typeof(ProjectionSettings), typeof(ProjectionCanvas), new PropertyMetadata(null, (d, _) => ((ProjectionCanvas)d).Rerender()));
+
     public static readonly DependencyProperty UsesTransitionsProperty =
         DependencyProperty.Register(nameof(UsesTransitions), typeof(bool), typeof(ProjectionCanvas), new PropertyMetadata(false));
 
@@ -71,6 +78,38 @@ public sealed partial class ProjectionCanvas : UserControl
             Background = IrisTheme.Brush("IrisBlackBrush"),
             Children = { new Viewbox { Stretch = Stretch.Uniform, Child = _stage } },
         };
+        Loaded += (_, _) =>
+        {
+            ProjectionTypography.Changed -= OnTypographyChanged;
+            ProjectionTypography.Changed += OnTypographyChanged;
+        };
+        Unloaded += (_, _) => ProjectionTypography.Changed -= OnTypographyChanged;
+    }
+
+    public ProjectionSettings? Typography
+    {
+        get => (ProjectionSettings?)GetValue(TypographyProperty);
+        set => SetValue(TypographyProperty, value);
+    }
+
+    private ProjectionSettings EffectiveTypography => Typography ?? ProjectionTypography.Current;
+
+    private void OnTypographyChanged(object? sender, EventArgs e)
+    {
+        if (Typography is null)
+        {
+            Rerender();
+        }
+    }
+
+    /// <summary>Draws the same frame again (the typography changed, not the frame).</summary>
+    private void Rerender()
+    {
+        if (Frame is not null && _stage.Children.Count > 0)
+        {
+            _stage.Children.Clear();
+            Render(null);
+        }
     }
 
     public ProjectionFrame? Frame
@@ -177,7 +216,7 @@ public sealed partial class ProjectionCanvas : UserControl
 
         var content = frame.Content switch
         {
-            TextContent text => BuildText(text),
+            TextContent text => BuildText(text, EffectiveTypography),
             ImageContent image => BuildImage(image),
             VideoContent video => BuildVideo(video),
             AudioContent audio => BuildMedia(Glyphs.Waveform, IrisTheme.Color("IrisSuccessColor"), audio.Title, audio.Duration, circled: false),
@@ -193,18 +232,21 @@ public sealed partial class ProjectionCanvas : UserControl
         return layer;
     }
 
-    // Letra / versículo: serif Medium W×0.046, centered, shrinks to fit; footnote sans W×0.022 uppercase at 60%.
-    private static UIElement BuildText(TextContent text)
+    // Letra / versículo (api-contract §6): the church's typeface at its size (points on a 1920-wide screen, scaled to
+    // the stage), Medium, centered, shrinks to fit; footnote in the same typeface at 0.022/0.046 of the body, uppercase at 60%.
+    private static UIElement BuildText(TextContent text, ProjectionSettings typography)
     {
         const double padding = W * 0.07;
+        var bodySize = W / 1920 * typography.FontSizePt;
+        var font = ProjectionFonts.FontFamily(typography.FontFamily);
         var body = new TextBlock
         {
             Text = text.Body,
             Width = W - (padding * 2),
-            FontFamily = (FontFamily)Application.Current.Resources["IrisSerifDisplayFontFamily"],
+            FontFamily = font,
             FontWeight = FontWeights.Medium,
-            FontSize = W * 0.046,
-            LineHeight = (W * 0.046 * 1.2) + (W * 0.006),
+            FontSize = bodySize,
+            LineHeight = (bodySize * 1.2) + (W * 0.006),
             LineStackingStrategy = LineStackingStrategy.BlockLineHeight,
             TextAlignment = TextAlignment.Center,
             TextWrapping = TextWrapping.Wrap,
@@ -215,7 +257,7 @@ public sealed partial class ProjectionCanvas : UserControl
         stack.Children.Add(new Viewbox
         {
             StretchDirection = StretchDirection.DownOnly,
-            MaxHeight = H - (padding * 2) - (text.Footnote is null ? 0 : W * 0.06),
+            MaxHeight = H - (padding * 2) - (text.Footnote is null ? 0 : bodySize * 1.3),
             Child = body,
         });
 
@@ -224,10 +266,10 @@ public sealed partial class ProjectionCanvas : UserControl
             stack.Children.Add(new TextBlock
             {
                 Text = text.Footnote.ToUpperInvariant(),
-                FontFamily = (FontFamily)Application.Current.Resources["IrisSansFontFamily"],
+                FontFamily = font,
                 FontWeight = FontWeights.SemiBold,
-                FontSize = W * 0.022,
-                CharacterSpacing = (int)Math.Round(W * 0.003 / (W * 0.022) * 1000),
+                FontSize = bodySize * (0.022 / 0.046),
+                CharacterSpacing = (int)Math.Round(W * 0.003 / (bodySize * (0.022 / 0.046)) * 1000),
                 Opacity = IrisTheme.Double("IrisFootnoteOpacity"),
                 TextAlignment = TextAlignment.Center,
                 HorizontalAlignment = HorizontalAlignment.Center,

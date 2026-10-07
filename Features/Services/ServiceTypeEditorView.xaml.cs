@@ -41,6 +41,4 @@ public sealed partial class ServiceTypeEditorView : UserControl
             TracksTimeSwitch.IsOn = viewModel.TracksTime;
         }
     }
-
-    private void OnAddPersonSubmitted(object? sender, EventArgs e) => ViewModel?.ConfirmAddPersonCommand.Execute(null);
 }

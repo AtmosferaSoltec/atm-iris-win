@@ -37,13 +37,25 @@ public interface IMediaCache
     /// <summary>Less than 1 GB free: video downloads are paused (the sync indicator says so).</summary>
     bool LowDiskSpace { get; }
 
+    /// <summary>Mock mode: no files at all, design data stands in for them.</summary>
+    bool IsNull => false;
+
     /// <summary>Downloads what is missing or changed and deletes what is gone, in the background. Never throws.</summary>
     Task ReconcileAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Music and videos to have on this PC (added to a service, api-contract §11). Images and
+    /// backgrounds download on their own; these only once asked, and then stay until they are
+    /// deleted or replaced on the web. Asking again retries a failed download. Never throws.
+    /// </summary>
+    Task RequestAsync(IEnumerable<Guid> ids, CancellationToken ct = default);
 }
 
 public sealed class NullMediaCache : IMediaCache
 {
     public bool LowDiskSpace => false;
+
+    public bool IsNull => true;
 
 #pragma warning disable CS0067 // Never raised: Mock mode has no files.
     public event EventHandler<Guid>? StateChanged;
@@ -54,6 +66,8 @@ public sealed class NullMediaCache : IMediaCache
     public MediaFileState StateOf(MediaAssetDto media) => new(MediaAvailability.Placeholder, 0, null);
 
     public Task ReconcileAsync(CancellationToken ct = default) => Task.CompletedTask;
+
+    public Task RequestAsync(IEnumerable<Guid> ids, CancellationToken ct = default) => Task.CompletedTask;
 }
 
 /// <summary>Free disk space for the cache folder (replaceable in tests).</summary>
@@ -78,11 +92,12 @@ public sealed class DriveDiskSpace : IDiskSpace
 }
 
 /// <summary>
-/// Church images, videos and music kept on this PC so the service never depends on the network. Layout:
-/// <c>root/Media/&lt;churchId&gt;/&lt;mediaId&gt;-&lt;updatedAt ticks&gt;.&lt;ext&gt;</c>. After every sync it downloads what is missing
-/// (two at a time; images and music first, videos after) through the signed URL of <c>GET /media/:id/download-url</c> with a
-/// client that carries no credentials, into a <c>.part</c> file that is renamed when complete and resumed after a restart.
-/// Files of deleted or replaced media are removed.
+/// Church images, videos and music kept on this PC (api-contract §11). Layout:
+/// <c>root/Media/&lt;churchId&gt;/&lt;mediaId&gt;-&lt;updatedAt ticks&gt;.&lt;ext&gt;</c>. After every sync it downloads every image and
+/// background, plus the music and videos that were requested (<see cref="RequestAsync"/>, when added to a service) or are
+/// already here in an older version (two at a time; images and music first, videos after), through the signed URL of
+/// <c>GET /media/:id/download-url</c> with a client that carries no credentials, into a <c>.part</c> file that is renamed
+/// when complete and resumed after a restart. Files of deleted or replaced media are removed.
 /// </summary>
 public sealed class MediaCache : IMediaCache
 {
@@ -100,6 +115,9 @@ public sealed class MediaCache : IMediaCache
     private readonly ILogger<MediaCache> _log;
     private readonly ConcurrentDictionary<Guid, MediaFileState> _active = new();
     private readonly SemaphoreSlim _reconcileGate = new(1, 1);
+
+    /// <summary>Music and videos asked for on this PC (this session, or already downloaded before).</summary>
+    private readonly ConcurrentDictionary<Guid, byte> _wanted = new();
     private bool _lowDisk;
 
     /// <param name="downloader">A client <b>without</b> the auth handler: the URL is already signed.</param>
@@ -157,7 +175,7 @@ public sealed class MediaCache : IMediaCache
             RemoveStale(session.Church.Id, folder, media);
 
             var missing = media
-                .Where(m => !File.Exists(Path.Combine(folder, FileName(m))))
+                .Where(m => DownloadsNow(m) && !File.Exists(Path.Combine(folder, FileName(m))))
                 .OrderBy(m => m.Kind == "video" ? 1 : 0)
                 .ThenByDescending(m => m.CreatedAt)
                 .ToList();
@@ -193,6 +211,34 @@ public sealed class MediaCache : IMediaCache
             _reconcileGate.Release();
         }
     }
+
+    public async Task RequestAsync(IEnumerable<Guid> ids, CancellationToken ct = default)
+    {
+        var any = false;
+        foreach (var id in ids)
+        {
+            _wanted[id] = 0;
+            any = true;
+
+            // A failed one gets another chance when asked again.
+            if (_active.TryGetValue(id, out var state) && state.Availability == MediaAvailability.Failed)
+            {
+                Set(id, MediaFileState.Missing);
+            }
+        }
+
+        if (any)
+        {
+            await ReconcileAsync(ct);
+        }
+    }
+
+    /// <summary>Images and backgrounds always; music and videos only when requested.</summary>
+    private bool DownloadsNow(MediaAssetDto media) => media.Kind == "image" || media.IsBackground || _wanted.ContainsKey(media.Id);
+
+    /// <summary><c>&lt;mediaId&gt;-&lt;ticks&gt;.&lt;ext&gt;</c> → the id, or null for anything else.</summary>
+    public static Guid? MediaIdOfFile(string fileName) =>
+        fileName.Length > 36 && fileName[36] == '-' && Guid.TryParse(fileName.AsSpan(0, 36), out var id) ? id : null;
 
     private async Task DownloadAsync(MediaAssetDto item, string folder, CancellationToken ct)
     {
@@ -273,10 +319,18 @@ public sealed class MediaCache : IMediaCache
         try
         {
             var expected = media.Select(FileName).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var ids = media.Select(m => m.Id).ToHashSet();
             foreach (var file in Directory.EnumerateFiles(churchFolder))
             {
                 var name = Path.GetFileName(file);
                 var baseName = name.EndsWith(".part", StringComparison.OrdinalIgnoreCase) ? name[..^5] : name;
+
+                // Already on this PC (or an older version of it): it stays wanted.
+                if (MediaIdOfFile(baseName) is { } id && ids.Contains(id))
+                {
+                    _wanted[id] = 0;
+                }
+
                 if (!expected.Contains(baseName))
                 {
                     File.Delete(file);

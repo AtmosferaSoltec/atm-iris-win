@@ -86,18 +86,7 @@ public sealed partial class FakeIrisApiHandler
             return ChangePassword(c, a);
         }
 
-        if (c.Is("POST", "auth", "switch-church"))
-        {
-            var churchId = c.Body(IrisJsonContext.Default.SwitchChurchBodyDto).ChurchId;
-            if (!a.User.Memberships.Any(m => m.ChurchId == churchId && m.Active))
-            {
-                throw new FakeHttpException(403, "NO_CHURCH_ACCESS", "Tu cuenta no tiene acceso a esa iglesia.");
-            }
-
-            a.Session.ChurchId = churchId;
-            a.User.LastChurchId = churchId;
-            return Ok(Issue(a.Session, a.User), IrisJsonContext.Default.AuthResultDto);
-        }
+        // No `/auth/switch-church`: one account per church, nothing to switch to (api-contract §3/§7).
 
         if (c.Is("GET", "auth", "sessions"))
         {
@@ -172,8 +161,7 @@ public sealed partial class FakeIrisApiHandler
             Email = email,
             FullName = fullName,
             Password = body.Password!,
-            LastChurchId = church.Id,
-            Memberships = [new FakeMembership { ChurchId = church.Id, Role = "owner", JoinedAt = now }],
+            ChurchId = church.Id,
         };
         _db.Users.Add(user);
         var session = NewSession(user, church.Id, body.Client);
@@ -196,10 +184,7 @@ public sealed partial class FakeIrisApiHandler
             throw invalid;
         }
 
-        var active = user.Memberships.Where(m => m.Active).OrderBy(m => m.JoinedAt).ToList();
-        var membership = active.FirstOrDefault(m => m.ChurchId == user.LastChurchId) ?? active.FirstOrDefault()
-            ?? throw new FakeHttpException(403, "NO_CHURCH_ACCESS", "Tu cuenta no tiene ninguna iglesia activa.");
-        return Ok(Issue(NewSession(user, membership.ChurchId, body.Client), user), IrisJsonContext.Default.AuthResultDto);
+        return Ok(Issue(NewSession(user, user.ChurchId, body.Client), user), IrisJsonContext.Default.AuthResultDto);
     }
 
     private HttpResponseMessage Refresh(Ctx c)
@@ -239,12 +224,6 @@ public sealed partial class FakeIrisApiHandler
         }
 
         var user = _db.Users.First(u => u.Id == session.UserId);
-        if (!user.Memberships.Any(m => m.ChurchId == session.ChurchId && m.Active))
-        {
-            session.Revoked = true;
-            throw invalid;
-        }
-
         session.LastUsedAt = now;
         session.RefreshExpiresAt = now.AddDays(60);
         return Ok(Issue(session, user), IrisJsonContext.Default.AuthResultDto);
@@ -343,7 +322,6 @@ public sealed partial class FakeIrisApiHandler
             CurrentSecret = NewSecret(),
             RefreshExpiresAt = now.AddDays(60),
         };
-        user.LastChurchId = churchId;
         _db.Sessions.Add(session);
         return session;
     }
@@ -351,18 +329,9 @@ public sealed partial class FakeIrisApiHandler
     private SessionViewDto ViewOf(FakeSession session, FakeUser user)
     {
         var church = _db.Churches.First(x => x.Id == session.ChurchId);
-        var role = user.Memberships.First(m => m.ChurchId == church.Id && m.Active).Role;
-        var churches = user.Memberships
-            .Where(m => m.Active)
-            .Select(m => new ChurchSummaryDto(m.ChurchId, _db.Churches.First(x => x.Id == m.ChurchId).Name, m.Role))
-            .OrderBy(x => x.Name, StringComparer.CurrentCultureIgnoreCase)
-            .ToList();
         return new SessionViewDto(
             new UserDto(user.Id, user.Email, user.FullName),
             new ChurchRefDto(church.Id, church.Name, church.Timezone),
-            role,
-            FakeAccess.PermissionsFor(role).ToList(),
-            churches,
             new SessionInfoDto(session.Id, session.Platform, session.DeviceName));
     }
 
@@ -373,7 +342,7 @@ public sealed partial class FakeIrisApiHandler
         var expires = now + AccessTokenLifetime;
         var access = $"fat.{session.Id:N}.{expires.ToUnixTimeSeconds()}.{NewSecret()[..8]}";
         return new AuthResultDto(
-            view.User, view.Church, view.Role, view.Permissions, view.Churches, view.Session,
+            view.User, view.Church, view.Session,
             access, expires, $"{session.Id:N}.{session.Generation}.{session.CurrentSecret}", session.RefreshExpiresAt);
     }
 }

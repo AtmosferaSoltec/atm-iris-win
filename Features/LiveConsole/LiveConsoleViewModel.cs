@@ -52,12 +52,17 @@ public sealed partial class LiveConsoleViewModel : ObservableObject
     private readonly SessionStore _session;
     private readonly IMediaCache _mediaCache;
     private readonly IUiDispatcher _ui;
+    private readonly IProjectionSettingsRepository _projection;
 
     private CancellationTokenSource _lifetime = new();
     private CancellationTokenSource? _undoTimer;
     private Guid? _openItemId;
     private ServiceItem? _presentedScripture;
     private ConsoleLaunch? _launch;
+
+    /// <summary>The latest library state of the files behind the service's media items, by media id.</summary>
+    private Dictionary<Guid, MediaAsset> _mediaFiles = [];
+    private bool _mediaRefreshScheduled;
 
     public LiveConsoleViewModel(
         IServicePlanRepository plans,
@@ -74,8 +79,10 @@ public sealed partial class LiveConsoleViewModel : ObservableObject
         SessionStore session,
         IMediaCache mediaCache,
         IUiDispatcher ui,
-        ChurchClock clock)
+        ChurchClock clock,
+        IProjectionSettingsRepository projection)
     {
+        _projection = projection;
         _clock = clock;
         _sync = sync;
         _session = session;
@@ -142,6 +149,8 @@ public sealed partial class LiveConsoleViewModel : ObservableObject
         _player.Ended -= OnPlayerEnded;
         _player.ProgressChanged += OnPlayerProgress;
         _player.Ended += OnPlayerEnded;
+        _mediaCache.StateChanged -= OnMediaFileChanged;
+        _mediaCache.StateChanged += OnMediaFileChanged;
         _launch = launch;
         Modules = launch?.Modules ?? ChurchModules.All;
         BlockTimer = launch is { ServiceType: { TracksTime: true } type } && Modules.TimeControl
@@ -218,9 +227,41 @@ public sealed partial class LiveConsoleViewModel : ObservableObject
                 return new ProjectionFrame(background, ProjectionContent.Blank);
             }
 
-            return new ProjectionFrame(background, item.Slides[Live.SlideIndex].Content);
+            return new ProjectionFrame(background, Resolve(item, item.Slides[Live.SlideIndex].Content));
         }
     }
+
+    /// <summary>Toolbar: "Fondo · Aurora", or "Fondo · Negro" with none.</summary>
+    public string BackgroundButtonText =>
+        $"Fondo · {Backgrounds.FirstOrDefault(b => b.Model.Id == SelectedBackgroundId)?.Name ?? "Negro"}";
+
+    // ----- SIGUIENTE (desktop, wide window): the slide → would send -----
+
+    private (ServiceItem Item, int Index)? NextSlideRef => !IsScreenCleared && Live is { } live && FindItem(live.ItemId) is { IsMedia: false } item && live.SlideIndex + 1 < item.Slides.Count
+        ? (item, live.SlideIndex + 1)
+        : null;
+
+    public bool HasNextSlide => NextSlideRef is not null;
+
+    public ProjectionFrame NextFrame
+    {
+        get
+        {
+            if (NextSlideRef is not { } next)
+            {
+                return ProjectionFrame.Black;
+            }
+
+            var background = Backgrounds.FirstOrDefault(b => b.Model.Id == SelectedBackgroundId)?.Model;
+            return new ProjectionFrame(background, next.Item.Slides[next.Index].Content);
+        }
+    }
+
+    public string NextSlideHint => NextSlideRef is { } next
+        ? $"{next.Item.Slides[next.Index].Label ?? $"Diapositiva {next.Index + 1}"} · → para enviarla al TV"
+        : Live is null || IsScreenCleared
+            ? "Envía una diapositiva al TV y aquí verás la que sigue."
+            : "No hay más diapositivas en este elemento.";
 
     // ===== Workspace =====
 
@@ -257,7 +298,25 @@ public sealed partial class LiveConsoleViewModel : ObservableObject
 
     public bool CanGoNext => IsShowingCards && LiveSlideIndex < Cards.Count - 1;
 
-    public ProjectionFrame MediaFrame => OpenItem is { IsMedia: true } item ? new ProjectionFrame(null, item.Slides[0].Content) : ProjectionFrame.Black;
+    public ProjectionFrame MediaFrame => OpenItem is { IsMedia: true } item ? new ProjectionFrame(null, Resolve(item, item.Slides[0].Content)) : ProjectionFrame.Black;
+
+    // ----- The open media's file (api-contract §11: music and videos download once added) -----
+
+    /// <summary>Design data and files already on this PC count as ready.</summary>
+    private MediaAvailability OpenMediaAvailability => OpenItem?.MediaId is { } id && _mediaFiles.TryGetValue(id, out var asset)
+        ? asset.Availability
+        : MediaAvailability.Placeholder;
+
+    public bool IsOpenMediaReady => OpenMediaAvailability is MediaAvailability.Placeholder or MediaAvailability.Ready;
+
+    public bool IsOpenMediaFailed => OpenMediaAvailability == MediaAvailability.Failed;
+
+    /// <summary>Still in the cloud or on its way: the stage shows the progress instead of the action.</summary>
+    public bool IsOpenMediaDownloading => !IsOpenMediaReady && !IsOpenMediaFailed;
+
+    public string MediaDownloadText => OpenItem?.MediaId is { } id && _mediaFiles.TryGetValue(id, out var asset) && asset.Availability == MediaAvailability.Downloading
+        ? $"Descargando… {(int)Math.Round(asset.Progress * 100)} %"
+        : "Descargando…";
 
     public bool IsSelectedMediaActive => OpenItem switch
     {
@@ -266,7 +325,7 @@ public sealed partial class LiveConsoleViewModel : ObservableObject
         _ => false,
     };
 
-    public bool CanPresentSelectedMedia => !IsSelectedMediaActive;
+    public bool CanPresentSelectedMedia => !IsSelectedMediaActive && IsOpenMediaReady;
 
     public string MediaButtonText => OpenKind == ServiceItemKind.Image
         ? IsSelectedMediaActive ? "En pantalla" : "Mostrar en el TV"
@@ -274,7 +333,11 @@ public sealed partial class LiveConsoleViewModel : ObservableObject
 
     public string MediaBadgeText => OpenKind == ServiceItemKind.Image ? "EN PANTALLA" : "REPRODUCIENDO";
 
-    public string MediaHint => OpenKind switch
+    public string MediaHint => IsOpenMediaFailed
+        ? "No se pudo descargar. Revisa la conexión a internet."
+        : IsOpenMediaDownloading
+            ? "Se descarga una sola vez y queda guardada en esta computadora."
+            : OpenKind switch
     {
         ServiceItemKind.Music => "La música suena en el salón; el TV no cambia. Contrólala desde el reproductor.",
         ServiceItemKind.Video => "El video se muestra en el TV. Contrólalo desde el reproductor bajo la pantalla en vivo.",
@@ -309,11 +372,17 @@ public sealed partial class LiveConsoleViewModel : ObservableObject
             var backgrounds = await _backgrounds.BackgroundsAsync();
             Backgrounds = backgrounds.Select(b => new BackgroundOptionViewModel(b, this)).ToList();
             OnPropertyChanged(nameof(Backgrounds));
-            SelectBackgroundCore(Backgrounds.FirstOrDefault()?.Model.Id);
+
+            // How the lyrics look (api-contract §6): every surface, the TV included, follows it.
+            var typography = await LoadTypographyAsync();
+            Iris.Shared.Projection.ProjectionTypography.Set(typography);
             Items.Clear();
 
             if (_launch is { ServiceType: { } type } launch)
             {
+                // A new service starts as the church set it up in Proyección: its default background if it still
+                // exists, pure black otherwise — never the first background by chance.
+                SelectBackgroundCore(Backgrounds.FirstOrDefault(b => b.Model.Id == typography.DefaultBackgroundId)?.Model.Id);
                 // Started from Home (§6.2): empty list, nothing live, first background; the date is the start time.
                 ServiceTitle = type.Name;
                 ServiceDateText = $"{SpanishFormat.DayAndMonth(launch.StartedAt)} · {SpanishFormat.Time(launch.StartedAt)}";
@@ -322,6 +391,7 @@ public sealed partial class LiveConsoleViewModel : ObservableObject
             else
             {
                 // Preview service (§7.7): "Sublime gracia" open, its 2nd stanza on the TV, "Aurora" background.
+                SelectBackgroundCore(Backgrounds.FirstOrDefault()?.Model.Id);
                 var plan = await _plans.CurrentServiceAsync();
                 ServiceTitle = plan.Title;
                 ServiceDateText = plan.Date.ToString("dddd, d 'de' MMMM · HH:mm", Spanish);
@@ -350,11 +420,25 @@ public sealed partial class LiveConsoleViewModel : ObservableObject
         }
     }
 
+    /// <summary>A church that never opened Proyección just gets the defaults (system typeface, 88 pt, black).</summary>
+    private async Task<ProjectionSettings> LoadTypographyAsync()
+    {
+        try
+        {
+            return await _projection.SettingsAsync();
+        }
+        catch (Exception)
+        {
+            return ProjectionSettings.Default;
+        }
+    }
+
     /// <summary>Stops loops and blanks the TV when the console goes away.</summary>
     public void Deactivate()
     {
         _player.ProgressChanged -= OnPlayerProgress;
         _player.Ended -= OnPlayerEnded;
+        _mediaCache.StateChanged -= OnMediaFileChanged;
         CloseAddSheet();
         CloseBiblePicker();
         _sync.Resume();
@@ -409,7 +493,8 @@ public sealed partial class LiveConsoleViewModel : ObservableObject
     [RelayCommand]
     private void PresentSelectedMedia()
     {
-        if (OpenItem is not { IsMedia: true } item || IsSelectedMediaActive)
+        // A file still downloading waits for it (api-contract §11).
+        if (OpenItem is not { IsMedia: true } item || IsSelectedMediaActive || !IsOpenMediaReady)
         {
             return;
         }
@@ -589,7 +674,7 @@ public sealed partial class LiveConsoleViewModel : ObservableObject
             VideoContent video => video.Duration.TotalSeconds,
             _ => 0,
         };
-        var content = item.Slides[0].Content;
+        var content = Resolve(item, item.Slides[0].Content);
         var request = new PlaybackRequest(
             item.Id,
             item.Kind == ServiceItemKind.Video,
@@ -714,10 +799,89 @@ public sealed partial class LiveConsoleViewModel : ObservableObject
             Items.Add(new ServiceItemViewModel(item, this));
         }
 
+        // Files not on this PC yet start downloading now and stay here afterwards (api-contract §11). Until the
+        // library answers they count as on their way, so nothing tries to play a file that is not here.
+        var missing = items.Where(i => i.MediaId is not null && i.Slides[0].Content.LocalPath() is null).Select(i => i.MediaId!.Value).ToList();
+        if (missing.Count > 0 && !_mediaCache.IsNull)
+        {
+            foreach (var id in missing)
+            {
+                _mediaFiles.TryAdd(id, new MediaAsset(id, MediaKind.Image, string.Empty, string.Empty, null, []) { Availability = MediaAvailability.NotDownloaded });
+            }
+
+            _ = _library.DownloadAsync(missing);
+        }
+
         ScriptureItem = null;
         Open(items[0].Id);
         Changed();
+
+        _ = RefreshMediaFilesAsync();
     }
+
+    /// <summary>"Reintentar descarga" on the media stage.</summary>
+    [RelayCommand]
+    private void RetryMediaDownload()
+    {
+        if (OpenItem?.MediaId is { } id)
+        {
+            _ = _library.DownloadAsync([id]);
+        }
+    }
+
+    // Downloads report progress many times a second: refresh at most twice a second.
+    private void OnMediaFileChanged(object? sender, Guid id)
+    {
+        if (_mediaRefreshScheduled)
+        {
+            return;
+        }
+
+        _mediaRefreshScheduled = true;
+        _ui.Post(async () =>
+        {
+            await Task.Delay(500);
+            _mediaRefreshScheduled = false;
+            await RefreshMediaFilesAsync();
+        });
+    }
+
+    /// <summary>Reads where each media item's file stands (library state) and redraws what depends on it.</summary>
+    private async Task RefreshMediaFilesAsync()
+    {
+        var ids = Items.Select(i => i.Model.MediaId).OfType<Guid>().ToHashSet();
+        if (ids.Count == 0)
+        {
+            return;
+        }
+
+        var files = new Dictionary<Guid, MediaAsset>();
+        foreach (var kind in new[] { MediaKind.Music, MediaKind.Image, MediaKind.Video })
+        {
+            foreach (var asset in await _library.MediaAsync(kind))
+            {
+                if (ids.Contains(asset.Id))
+                {
+                    files[asset.Id] = asset;
+                }
+            }
+        }
+
+        // Deleted on the web meanwhile: it can no longer play.
+        foreach (var missing in ids.Where(id => !files.ContainsKey(id)))
+        {
+            files[missing] = new MediaAsset(missing, MediaKind.Image, string.Empty, string.Empty, null, []) { Availability = MediaAvailability.Failed };
+        }
+
+        _mediaFiles = files;
+        Changed();
+    }
+
+    /// <summary>A media slide with the file that is on this PC now (it may have arrived after the item was added).</summary>
+    private ProjectionContent Resolve(ServiceItem item, ProjectionContent content) =>
+        item.MediaId is { } id && _mediaFiles.TryGetValue(id, out var asset) && asset.Availability == MediaAvailability.Ready
+            ? content.WithLocalPath(asset.LocalPath)
+            : content;
 
     [RelayCommand]
     private void RemoveItem(ServiceItemViewModel item)
@@ -892,6 +1056,12 @@ public sealed partial class LiveConsoleViewModel : ObservableObject
     [RelayCommand]
     private void PresentBible()
     {
+        // Ctrl+B too: the Bible may be off for this church or for all of Iris (api-contract §6).
+        if (!ShowsBible)
+        {
+            return;
+        }
+
         var picker = new BiblePickerViewModel(_bible, PresentScriptureAsync, _ui);
         BiblePicker = picker;
         _ = picker.LoadAsync();
@@ -988,5 +1158,7 @@ public sealed partial class LiveConsoleViewModel : ObservableObject
         nameof(OpenSubtitle), nameof(IsShowingCards), nameof(IsShowingMedia), nameof(IsEditVisible), nameof(LiveSlideIndex),
         nameof(CanGoPrevious), nameof(CanGoNext), nameof(MediaFrame), nameof(IsSelectedMediaActive), nameof(CanPresentSelectedMedia),
         nameof(MediaButtonText), nameof(MediaBadgeText), nameof(MediaHint), nameof(IsServiceEmpty), nameof(ClearServiceButtonText),
+        nameof(IsOpenMediaReady), nameof(IsOpenMediaFailed), nameof(IsOpenMediaDownloading), nameof(MediaDownloadText),
+        nameof(BackgroundButtonText), nameof(HasNextSlide), nameof(NextFrame), nameof(NextSlideHint),
     ];
 }

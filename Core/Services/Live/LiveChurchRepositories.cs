@@ -17,14 +17,42 @@ public sealed class LiveModuleSettingsRepository(LiveData data) : IModuleSetting
     public async Task<ChurchModules> ModulesAsync() =>
         await data.Store.GetChurchAsync() is { } church ? Mapping.ToModel(church.Modules) : ChurchModules.All;
 
+    public async Task<ChurchModules> AvailableModulesAsync() =>
+        await data.Store.GetChurchAsync() is { AvailableModules: { } available } ? Mapping.ToModel(available) : ChurchModules.All;
+
+    /// <summary>A module switched off for all of Iris is left untouched: its choice is kept and
+    /// comes back on its own once the module is available again.</summary>
     public async Task SaveAsync(ChurchModules modules)
+    {
+        var available = await AvailableModulesAsync();
+        if (await data.Store.GetChurchAsync() is { } church)
+        {
+            var kept = new ChurchModules(
+                available.Bible ? modules.Bible : Mapping.ToModel(church.Modules).Bible,
+                available.Multimedia ? modules.Multimedia : Mapping.ToModel(church.Modules).Multimedia,
+                available.TimeControl ? modules.TimeControl : Mapping.ToModel(church.Modules).TimeControl);
+            await data.Store.SetChurchAsync(church with { Modules = Mapping.ToDto(kept), UpdatedAt = data.Now });
+        }
+
+        await data.QueueAsync(HttpMethod.Put, "church/modules", Mapping.ToDto(modules), IrisJsonContext.Default.ChurchModulesDto, "Configuración", entity: null);
+    }
+}
+
+/// <summary>Typeface, size and default background of the projected lyrics, read from the local copy;
+/// changes go to the queue (<c>PUT /church/projection</c>).</summary>
+public sealed class LiveProjectionSettingsRepository(LiveData data) : IProjectionSettingsRepository
+{
+    public async Task<ProjectionSettings> SettingsAsync() =>
+        await data.Store.GetChurchAsync() is { } church ? Mapping.ToModel(church.Projection) : ProjectionSettings.Default;
+
+    public async Task SaveAsync(ProjectionSettings settings)
     {
         if (await data.Store.GetChurchAsync() is { } church)
         {
-            await data.Store.SetChurchAsync(church with { Modules = Mapping.ToDto(modules), UpdatedAt = data.Now });
+            await data.Store.SetChurchAsync(church with { Projection = Mapping.ToDto(settings), UpdatedAt = data.Now });
         }
 
-        await data.QueueAsync(HttpMethod.Put, "church/modules", Mapping.ToDto(modules), IrisJsonContext.Default.ChurchModulesDto, "Módulos", entity: null);
+        await data.QueueAsync(HttpMethod.Put, "church/projection", Mapping.ToDto(settings), IrisJsonContext.Default.ProjectionSettingsDto, "Proyección", entity: null);
     }
 }
 
@@ -69,19 +97,6 @@ public sealed class LivePeopleRepository(LiveData data) : IPeopleRepository
     {
         var current = (await data.Store.GetPeopleAsync()).FirstOrDefault(p => p.Id == id);
         await data.Store.DeleteAsync(StoreEntity.People, id);
-
-        // Contract §8: templates stop suggesting the person. The server does the same and bumps those types on its side.
-        foreach (var type in await data.Store.GetServiceTypesAsync())
-        {
-            if (type.Blocks.Any(b => b.DefaultPersonId == id))
-            {
-                await data.Store.UpsertAsync(type with
-                {
-                    Blocks = type.Blocks.Select(b => b.DefaultPersonId == id ? b with { DefaultPersonId = null } : b).ToList(),
-                    UpdatedAt = data.Now,
-                });
-            }
-        }
 
         await data.QueueAsync(HttpMethod.Delete, $"people/{id}", current?.Name ?? "Persona", StoreEntity.People);
     }

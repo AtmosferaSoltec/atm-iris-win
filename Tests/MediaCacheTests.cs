@@ -49,7 +49,7 @@ public sealed class MediaCacheTests : IDisposable
     }
 
     [Fact]
-    public async Task Reconcile_downloads_every_file_and_marks_it_ready()
+    public async Task Reconcile_downloads_images_and_leaves_music_until_it_is_requested()
     {
         using var s = await ReadyAsync();
         var cache = NewCache(s);
@@ -58,13 +58,51 @@ public sealed class MediaCacheTests : IDisposable
 
         var media = await s.Store.GetMediaAsync();
         Assert.Equal(3, media.Count);
-        foreach (var item in media)
+        foreach (var item in media.Where(m => m.Kind == "image"))
         {
             var state = cache.StateOf(item);
             Assert.Equal(MediaAvailability.Ready, state.Availability);
             Assert.True(File.Exists(state.Path));
             Assert.Equal(item.SizeBytes, new FileInfo(state.Path!).Length);
         }
+
+        // api-contract §11: music and videos only once added to a service.
+        var audio = media.Single(m => m.Kind == "audio");
+        Assert.Equal(MediaAvailability.NotDownloaded, cache.StateOf(audio).Availability);
+
+        await cache.RequestAsync([audio.Id]);
+        Assert.Equal(MediaAvailability.Ready, cache.StateOf(audio).Availability);
+        Assert.Equal(audio.SizeBytes, new FileInfo(cache.StateOf(audio).Path!).Length);
+    }
+
+    [Fact]
+    public async Task Music_already_on_this_pc_is_downloaded_again_when_replaced_on_the_web()
+    {
+        using var s = await ReadyAsync();
+        var first = NewCache(s);
+        var audio = (await s.Store.GetMediaAsync()).Single(m => m.Kind == "audio");
+        await first.RequestAsync([audio.Id]);
+        var oldPath = first.StateOf(audio).Path!;
+
+        var updated = audio with { UpdatedAt = audio.UpdatedAt.AddMinutes(5) };
+        FakeRows.Put(s.Stack.Fake.Db, s.ChurchId, FakeKind.Media, audio.Id, updated, IrisJsonContext.Default.MediaAssetDto);
+        await s.Engine.SyncNowAsync(SyncReason.Manual);
+
+        // A fresh cache (the app restarted): the old file says the track was wanted.
+        var second = NewCache(s);
+        await second.ReconcileAsync();
+
+        var fresh = (await s.Store.GetMediaAsync()).Single(m => m.Id == audio.Id);
+        Assert.Equal(MediaAvailability.Ready, second.StateOf(fresh).Availability);
+        Assert.False(File.Exists(oldPath));
+    }
+
+    [Fact]
+    public void Cached_file_names_give_back_the_media_id()
+    {
+        var id = Guid.NewGuid();
+        Assert.Equal(id, MediaCache.MediaIdOfFile($"{id}-638000000000000000.mp3"));
+        Assert.Null(MediaCache.MediaIdOfFile("notas.txt"));
     }
 
     [Fact]
@@ -147,7 +185,7 @@ public sealed class MediaCacheTests : IDisposable
         var warned = 0;
         cache.LowDiskSpaceChanged += (_, _) => warned++;
 
-        await cache.ReconcileAsync();
+        await cache.RequestAsync([video.Id]);
 
         Assert.True(cache.LowDiskSpace);
         Assert.Equal(1, warned);

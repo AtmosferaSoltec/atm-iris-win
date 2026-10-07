@@ -59,11 +59,6 @@
                             Text="{x:Bind StatusText, Mode=OneWay}"
                             Visibility="{x:Bind IsUnavailable, Mode=OneWay}" />
                         <TextBlock
-                            Foreground="{StaticResource IrisTextTertiaryBrush}"
-                            Style="{StaticResource IrisCaptionTextStyle}"
-                            Text="{x:Bind Copyright}"
-                            Visibility="{x:Bind HasCopyright}" />
-                        <TextBlock
                             Margin="0,4,0,0"
                             FontFamily="{StaticResource IrisSerifTextFontFamily}"
                             FontSize="{StaticResource IrisCalloutFontSize}"
@@ -98,7 +93,7 @@
                 <StackPanel Spacing="{StaticResource IrisSpacingXs}">
                     <Grid CornerRadius="{StaticResource IrisRadiusMd}">
                         <projection:ProjectionCanvas DecodePixelWidth="{StaticResource IrisThumbnailDecodeWidth}" Frame="{x:Bind ThumbnailFrame, Mode=OneWay}" />
-                        <!--  Not on this PC yet: progress instead of the picture, and the tile cannot be chosen  -->
+                        <!--  Not on this PC yet: progress instead of the picture; it can still be chosen (adding it downloads it)  -->
                         <Grid Background="{StaticResource IrisScrimBrush}" Visibility="{x:Bind IsUnavailable, Mode=OneWay}">
                             <StackPanel
                                 Margin="{StaticResource IrisPaddingXs}"
@@ -202,11 +197,27 @@
             Items="{x:Bind ViewModel.Tabs, Mode=OneWay}"
             SelectedIndex="{x:Bind ViewModel.TabIndex, Mode=TwoWay}" />
 
-        <controls:IrisTextField
-            Grid.Row="2"
-            Glyph="&#xE721;"
-            Placeholder="Título, autor o descripción"
-            Text="{x:Bind ViewModel.Query, Mode=TwoWay}" />
+        <StackPanel Grid.Row="2" Spacing="{StaticResource IrisSpacingSm}">
+            <controls:IrisTextField
+                Glyph="&#xE721;"
+                Placeholder="Título, autor o descripción"
+                Text="{x:Bind ViewModel.Query, Mode=TwoWay}" />
+            <!--  Música: tracks come from the web and download when added (api-contract §11)  -->
+            <StackPanel
+                Orientation="Horizontal"
+                Spacing="{StaticResource IrisSpacingSm}"
+                Visibility="{x:Bind ViewModel.ShowsMusicHint, Mode=OneWay, FallbackValue=Collapsed}">
+                <FontIcon
+                    Foreground="{StaticResource IrisSuccessBrush}"
+                    Glyph="&#xE753;"
+                    Style="{StaticResource IrisIconStyle}" />
+                <TextBlock
+                    VerticalAlignment="Center"
+                    Style="{StaticResource IrisCalloutTextStyle}"
+                    Text="Se suben desde la web, en Música. Al agregarlas al servicio se descargan y quedan en esta computadora."
+                    TextWrapping="Wrap" />
+            </StackPanel>
+        </StackPanel>
 
         <Grid Grid.Row="3">
             <ScrollViewer Padding="0,0,12,0" Visibility="{x:Bind ViewModel.IsRowTab, Mode=OneWay, FallbackValue=Collapsed}">

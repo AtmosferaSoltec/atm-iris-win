@@ -4,7 +4,12 @@
 > Contiene todo lo construido hasta ahora: concepto, tokens de diseño, componentes, pantallas, comportamiento, arquitectura, datos de prueba y textos visibles.
 > Todo lo que se ve en pantalla está en **español**; el código va en **inglés**.
 >
-> **Estado: maqueta funcional.** Todas las pantallas y reglas funcionan, pero **nada está conectado a un servidor**: el login acepta cualquier correo, los datos salen de mocks en memoria (§10–11) y se pierden al cerrar el app, la música y el video se simulan, y no hay salida real al TV. Hay que replicar exactamente eso (mismas interfaces y mocks) para que luego baste con cambiar los mocks por implementaciones reales.
+> **Estado: conectado a la API** (Windows, como el iPad). Las pantallas y reglas de este documento no cambian; lo que
+> antes simulaban los mocks ahora es real: sesión permanente, copia local con sincronización y cola de escrituras,
+> recuperación por código, contenido de la web (letras; música, imágenes, videos y fondos descargados al usarlos),
+> Biblia sin conexión cuando está disponible, segundo monitor y reproducción reales. Lo que cambió en el contrato después
+> de esta spec (una cuenta por iglesia sin roles; módulos del sistema; Proyección; servicios sin responsable fijo;
+> música en la nube) y el diseño de escritorio están en `docs/plans/11-paridad-ipad-y-escritorio`. Ahí manda el plan.
 >
 > **Recursos del logo**: se entregan aparte en la carpeta **`iris-logo-seleccionado`** (en Descargas). Copia al proyecto de Windows lo que necesites; el detalle de cada archivo está en §5.2.
 
@@ -330,7 +335,7 @@ Renderiza un `ProjectionFrame` en 16:9 a cualquier tamaño:
 6. Solo en crear cuenta: "Al crear tu cuenta aceptas los **Términos** y la **Política de privacidad**." (links, centrado, `caption`).
 
 **Validación** (en el ViewModel):
-- ⚠️ **Fase de maqueta: "Entrar" está libre** (no valida ni exige correo; si va vacío, el mock devuelve `pastor@vidanueva.org`). Restaurar validación al conectar el API.
+- "Entrar" exige correo válido y contraseña (validación restaurada al conectar la API).
 - Crear cuenta: requeridos → "Escribe el nombre de tu iglesia.", "Escribe el nombre del responsable."; correo → "Ingresa el correo de tu iglesia." / "Ese correo no parece válido."; contraseña → "Ingresa tu contraseña." / "Usa al menos 8 caracteres."
 - Al fallar la validación se enfoca el primer campo con error. Editar un campo borra su error y el banner.
 - Errores del servicio: "El correo o la contraseña no coinciden. Revísalos e inténtalo de nuevo." · "Ya existe una cuenta con ese correo. Intenta iniciar sesión." · "No pudimos conectarnos. Verifica tu conexión a internet." · genérico "Algo salió mal. Inténtalo de nuevo."

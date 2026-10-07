@@ -13,27 +13,29 @@ public sealed record ChurchSummaryDto(Guid Id, string Name, string Role);
 
 public sealed record SessionInfoDto(Guid Id, string Platform, string? DeviceName);
 
+// api-contract §3: the v1 API has one account per church — no roles, permissions or church list.
+// These three are kept nullable only so a reply from an older or test server still decodes.
 public sealed record SessionViewDto(
     UserDto User,
     ChurchRefDto Church,
-    string Role,
-    IReadOnlyList<string> Permissions,
-    IReadOnlyList<ChurchSummaryDto> Churches,
-    SessionInfoDto Session);
+    SessionInfoDto Session,
+    string? Role = null,
+    IReadOnlyList<string>? Permissions = null,
+    IReadOnlyList<ChurchSummaryDto>? Churches = null);
 
 public sealed record AuthResultDto(
     UserDto User,
     ChurchRefDto Church,
-    string Role,
-    IReadOnlyList<string> Permissions,
-    IReadOnlyList<ChurchSummaryDto> Churches,
     SessionInfoDto Session,
     string AccessToken,
     DateTimeOffset AccessTokenExpiresAt,
     string RefreshToken,
-    DateTimeOffset RefreshTokenExpiresAt)
+    DateTimeOffset RefreshTokenExpiresAt,
+    string? Role = null,
+    IReadOnlyList<string>? Permissions = null,
+    IReadOnlyList<ChurchSummaryDto>? Churches = null)
 {
-    public SessionViewDto ToView() => new(User, Church, Role, Permissions, Churches, Session);
+    public SessionViewDto ToView() => new(User, Church, Session, Role, Permissions, Churches);
 }
 
 public sealed record ClientInfoDto(string Platform, string? DeviceName);

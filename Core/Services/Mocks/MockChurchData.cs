@@ -17,10 +17,10 @@ public static class MockChurchData
     public static readonly Person SofiaMendez = new(Id(1, 7), "Sofía Méndez");
     public static readonly Person PabloCastro = new(Id(1, 8), "Pablo Castro");
 
-    public static readonly BlockTemplate Bienvenida = new(Id(3, 1), "Bienvenida", 10, CarlosPerez.Id);
-    public static readonly BlockTemplate Alabanzas = new(Id(3, 2), "Alabanzas", 15, AnaTorres.Id);
-    public static readonly BlockTemplate Predica = new(Id(3, 3), "Prédica", 40, DanielRuiz.Id);
-    public static readonly BlockTemplate Anuncios = new(Id(3, 4), "Anuncios", 5, LuciaGomez.Id);
+    public static readonly BlockTemplate Bienvenida = new(Id(3, 1), "Bienvenida", 10);
+    public static readonly BlockTemplate Alabanzas = new(Id(3, 2), "Alabanzas", 15);
+    public static readonly BlockTemplate Predica = new(Id(3, 3), "Prédica", 40);
+    public static readonly BlockTemplate Anuncios = new(Id(3, 4), "Anuncios", 5);
 
     public static readonly ServiceType CultoGeneral = new(Id(2, 1), "Culto general", "#FFB547", new ServiceSchedule(1, 10, 0), [Bienvenida, Alabanzas, Predica, Anuncios]);
     public static readonly ServiceType Jovenes = new(Id(2, 2), "Jóvenes", "#F0508C", new ServiceSchedule(7, 19, 0), []);

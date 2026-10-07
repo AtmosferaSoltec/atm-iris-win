@@ -30,15 +30,10 @@ public sealed partial class FakeIrisApiHandler
             return Ok(song, IrisJsonContext.Default.SongDto);
         }
 
-        if (c.Is("POST", "songs", "import"))
-        {
-            Require(a, "songs.manage");
-            return ImportSongs(c, church);
-        }
+        // No `POST /songs/import`: lyrics are written one at a time from the web (api-contract §10).
 
         if (c.Is("POST", "songs"))
         {
-            Require(a, "songs.manage");
             var body = c.Body(IrisJsonContext.Default.SongCreateDto);
             var id = body.Id ?? Guid.NewGuid();
             if (FakeRows.Find(_db, church, FakeKind.Songs, id, IrisJsonContext.Default.SongDto) is { } existing)
@@ -51,12 +46,11 @@ public sealed partial class FakeIrisApiHandler
                 throw new FakeHttpException(409, "ID_CONFLICT", "Ese identificador ya pertenece a otro recurso.");
             }
 
-            return Created(SaveSong(church, id, new SongInputDto(body.Title, body.Author, body.Copyright, body.Sections), null), IrisJsonContext.Default.SongDto);
+            return Created(SaveSong(church, id, new SongInputDto(body.Title, body.Author, body.Sections), null), IrisJsonContext.Default.SongDto);
         }
 
         if (c.Is("PUT", "songs", "*"))
         {
-            Require(a, "songs.manage");
             var id = ParseId(c.Segments[1]);
             var existing = FakeRows.Find(_db, church, FakeKind.Songs, id, IrisJsonContext.Default.SongDto);
             if (existing is null && FakeRows.BelongsToOtherChurch(_db, church, FakeKind.Songs, id))
@@ -70,7 +64,6 @@ public sealed partial class FakeIrisApiHandler
 
         if (c.Is("DELETE", "songs", "*"))
         {
-            Require(a, "songs.manage");
             return FakeRows.SoftDelete(_db, church, FakeKind.Songs, ParseId(c.Segments[1])) ? NoContent() : throw NotFound();
         }
 
@@ -159,11 +152,6 @@ public sealed partial class FakeIrisApiHandler
             errors["author"] = "El autor no puede superar 120 caracteres.";
         }
 
-        if ((input.Copyright?.Length ?? 0) > 200)
-        {
-            errors["copyright"] = "Los derechos no pueden superar 200 caracteres.";
-        }
-
         if (sections.Count is 0 or > 80)
         {
             errors["sections"] = "Una canción necesita entre 1 y 80 secciones.";
@@ -192,38 +180,11 @@ public sealed partial class FakeIrisApiHandler
             id,
             title,
             input.Author ?? string.Empty,
-            input.Copyright,
             sections.Select((s, i) => new SongSectionDto(existing is not null && i < existing.Sections.Count ? existing.Sections[i].Id : Guid.NewGuid(), s.Label, s.Text)).ToList(),
             existing?.CreatedAt ?? now,
             now);
         FakeRows.Put(_db, church, FakeKind.Songs, id, dto, IrisJsonContext.Default.SongDto);
         return dto;
-    }
-
-    private HttpResponseMessage ImportSongs(Ctx c, Guid church)
-    {
-        var body = c.Body(IrisJsonContext.Default.SongImportDto);
-        if (body.Songs is not { Count: >= 1 and <= 50 })
-        {
-            throw Validation("songs", "Importa entre 1 y 50 canciones.");
-        }
-
-        var taken = FakeRows.Live(_db, church, FakeKind.Songs, IrisJsonContext.Default.SongDto).Select(s => NameKey.For(s.Title)).ToHashSet();
-        var created = new List<SongSummaryDto>();
-        var skipped = new List<SkippedSongDto>();
-        foreach (var input in body.Songs)
-        {
-            if (!taken.Add(NameKey.For(input.Title)))
-            {
-                skipped.Add(new SkippedSongDto(input.Title, "duplicate"));
-                continue;
-            }
-
-            created.Add(Summary(SaveSong(church, Guid.NewGuid(), input, null)));
-        }
-
-        // Not in IrisJsonContext as a generic wrapper: serialize the result by hand through its own type info.
-        return Created(new SongImportResultDto(created, skipped), IrisJsonContext.Default.SongImportResultDto);
     }
 
     /// <summary>Development tool: adds a song to the fake church as if it had been written on the web.</summary>
@@ -238,7 +199,6 @@ public sealed partial class FakeIrisApiHandler
                 new SongInputDto(
                     $"Canción de prueba {n}",
                     "Autor de prueba",
-                    "Dominio público",
                     [new SongSectionInputDto("Estrofa 1", "Primera línea de prueba,\nsegunda línea de prueba."), new SongSectionInputDto("Coro", "Aleluya, aleluya,\ncantad al Señor.")]),
                 null);
             _store.Save(_db);

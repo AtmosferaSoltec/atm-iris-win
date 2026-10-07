@@ -54,15 +54,8 @@ public sealed partial class TopBarViewModel : ObservableObject
 
     public string Email => _session.Session?.Email ?? string.Empty;
 
-    /// <summary>"Dueño", "Administrador" or "Operador".</summary>
-    public string RoleText => _session.Session?.Role switch
-    {
-        Role.Owner => "Dueño",
-        Role.Admin => "Administrador",
-        _ => "Operador",
-    };
-
-    public string AccountSummary => $"{ChurchName} · {RoleText}";
+    /// <summary>One account per church (api-contract §3): the church is all there is to say, no role.</summary>
+    public string AccountSummary => ChurchName;
 
     public bool HasMultipleChurches => _session.Session?.Churches.Count > 1;
 

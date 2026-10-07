@@ -1,6 +1,7 @@
 using Iris.Core.Bible;
 using Iris.Core.Models;
 using Iris.Core.Services;
+using Iris.Core.Sync;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Iris.Tests;
@@ -22,11 +23,28 @@ public sealed class BibleStoreTests : IDisposable
 
     private BibleStore NewStore(TestStack stack) => new(stack.Api, _root, NullLogger<BibleStore>.Instance, () => stack.Now);
 
+    /// <summary>The Bible is switched off for all of Iris today (api-contract §6): these tests switch it on.</summary>
     private static async Task<TestStack> SignedInAsync()
     {
         var stack = new TestStack();
+        stack.Fake.Db.SystemBibleEnabled = true;
         await stack.SignInAsync();
         return stack;
+    }
+
+    [Fact]
+    public async Task With_the_bible_switched_off_for_all_of_iris_it_is_hidden_and_not_downloaded()
+    {
+        using var s = new SyncTestStack();
+        await s.SignInAsync();
+        await s.Engine.SyncNowAsync(SyncReason.SignedIn);
+
+        var modules = new Iris.Core.Services.Live.LiveModuleSettingsRepository(s.Data);
+        Assert.False((await modules.AvailableModulesAsync()).Bible);
+        Assert.False((await modules.ModulesAsync()).Bible);
+
+        var response = await s.Stack.Fake.SendRawAsync(HttpMethod.Get, "bible/translations", null, s.Stack.Auth.CurrentAccessToken);
+        Assert.Equal(System.Net.HttpStatusCode.NotFound, response.StatusCode);
     }
 
     [Fact]
