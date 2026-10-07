@@ -17,9 +17,11 @@ public sealed partial class LibraryEntryViewModel : ObservableObject
 {
     private Func<ServiceItem> _toServiceItem;
     private MediaAsset? _asset;
+    private bool _isAdded;
 
-    private LibraryEntryViewModel(ServiceItemKind kind, string title, string subtitle, Func<ServiceItem> toServiceItem, LibraryPanelViewModel owner)
+    private LibraryEntryViewModel(Guid id, ServiceItemKind kind, string title, string subtitle, Func<ServiceItem> toServiceItem, LibraryPanelViewModel owner)
     {
+        Id = id;
         Kind = kind;
         Title = title;
         Subtitle = subtitle;
@@ -28,6 +30,25 @@ public sealed partial class LibraryEntryViewModel : ObservableObject
     }
 
     public LibraryPanelViewModel Owner { get; }
+
+    /// <summary>The lyric sheet's or media asset's own id — matched against <see cref="ServiceItem.SourceId"/>.</summary>
+    public Guid Id { get; }
+
+    /// <summary>Already in the service: dragging, double-clicking or "+" do nothing until it is removed again.</summary>
+    public bool IsAdded
+    {
+        get => _isAdded;
+        set
+        {
+            if (SetProperty(ref _isAdded, value))
+            {
+                OnPropertyChanged(nameof(IsAddable));
+            }
+        }
+    }
+
+    /// <summary>The opposite of <see cref="IsAdded"/>, for the "+" button's visibility.</summary>
+    public bool IsAddable => !IsAdded;
 
     public ServiceItemKind Kind { get; }
 
@@ -92,7 +113,7 @@ public sealed partial class LibraryEntryViewModel : ObservableObject
     public ServiceItem ToServiceItem() => _toServiceItem();
 
     public static LibraryEntryViewModel FromLyrics(LyricSheet sheet, LibraryPanelViewModel owner) =>
-        new(ServiceItemKind.Song, sheet.Title, sheet.Author, () => ServiceItemFactory.FromLyrics(sheet), owner)
+        new(sheet.Id, ServiceItemKind.Song, sheet.Title, sheet.Author, () => ServiceItemFactory.FromLyrics(sheet), owner)
         {
             FirstLine = sheet.FirstLine,
             // Title, author and the text of every section, without accents or case (api-contract §10).
@@ -101,7 +122,7 @@ public sealed partial class LibraryEntryViewModel : ObservableObject
 
     public static LibraryEntryViewModel FromMedia(MediaAsset asset, LibraryPanelViewModel owner)
     {
-        var entry = new LibraryEntryViewModel(asset.Kind switch { MediaKind.Music => ServiceItemKind.Music, MediaKind.Image => ServiceItemKind.Image, _ => ServiceItemKind.Video },
+        var entry = new LibraryEntryViewModel(asset.Id, asset.Kind switch { MediaKind.Music => ServiceItemKind.Music, MediaKind.Image => ServiceItemKind.Image, _ => ServiceItemKind.Video },
             asset.Title, asset.Subtitle, () => ServiceItemFactory.FromMedia(asset), owner)
         {
             Duration = asset.Duration is { } d ? DurationText.Format(d) : null,
@@ -188,6 +209,17 @@ public sealed partial class LibraryPanelViewModel : ObservableObject, IDisposabl
 
     public bool ShowsMultimediaHint => TabIndex == MultimediaTab;
 
+    /// <summary>Marks the entries whose <see cref="LibraryEntryViewModel.Id"/> is already a <see cref="ServiceItem.SourceId"/>
+    /// in the service, so they show a check and refuse a second "+", double click or drop. Called on load and whenever
+    /// the service list changes.</summary>
+    public void SetAddedIds(IReadOnlySet<Guid> ids)
+    {
+        foreach (var entry in _tabs.SelectMany(t => t))
+        {
+            entry.IsAdded = ids.Contains(entry.Id);
+        }
+    }
+
     public async Task LoadAsync()
     {
         _tabs[LyricsTab] = (await _library.LyricsAsync()).Select(l => LibraryEntryViewModel.FromLyrics(l, this)).ToList();
@@ -269,7 +301,7 @@ public sealed partial class LibraryPanelViewModel : ObservableObject, IDisposabl
     [RelayCommand]
     private void Add(LibraryEntryViewModel? entry)
     {
-        if (entry is not null)
+        if (entry is not null && !entry.IsAdded)
         {
             _onAdd(entry.ToServiceItem());
         }

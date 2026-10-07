@@ -29,7 +29,7 @@ public sealed partial class LibraryPanelView : UserControl
 
     private void OnDragItemsStarting(object sender, DragItemsStartingEventArgs e)
     {
-        if (e.Items.Count == 1 && e.Items[0] is LibraryEntryViewModel entry)
+        if (e.Items.Count == 1 && e.Items[0] is LibraryEntryViewModel { IsAdded: false } entry)
         {
             e.Data.Properties[DragKey] = entry;
             e.Data.SetText(entry.Title);

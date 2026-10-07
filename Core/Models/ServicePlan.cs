@@ -26,6 +26,10 @@ public sealed record ServiceItem(Guid Id, ServiceItemKind Kind, string Title, st
     /// and use the file once it is on this PC (api-contract §11). Null for text and design data.</summary>
     public Guid? MediaId { get; init; }
 
+    /// <summary>The library entry (lyric sheet or media asset) this item came from, so the library panel can mark
+    /// it as already added and refuse a second copy. Null for scripture and other non-library items.</summary>
+    public Guid? SourceId { get; init; }
+
     public ServiceItem Duplicate() => this with { Id = Guid.NewGuid() };
 }
 

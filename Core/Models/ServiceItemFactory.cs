@@ -8,9 +8,12 @@ namespace Iris.Core.Models;
 public static class ServiceItemFactory
 {
     public static ServiceItem FromLyrics(LyricSheet sheet) =>
-        new(Guid.NewGuid(), ServiceItemKind.Song, sheet.Title, sheet.Author, sheet.Sections.Select(s => s with { Id = Guid.NewGuid() }).ToList());
+        new(Guid.NewGuid(), ServiceItemKind.Song, sheet.Title, sheet.Author, sheet.Sections.Select(s => s with { Id = Guid.NewGuid() }).ToList())
+        {
+            SourceId = sheet.Id,
+        };
 
-    public static ServiceItem FromMedia(MediaAsset asset) => FromMediaCore(asset) with { MediaId = asset.Id };
+    public static ServiceItem FromMedia(MediaAsset asset) => FromMediaCore(asset) with { MediaId = asset.Id, SourceId = asset.Id };
 
     private static ServiceItem FromMediaCore(MediaAsset asset) => asset.Kind switch
     {

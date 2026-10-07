@@ -99,8 +99,16 @@ public sealed partial class LiveConsoleViewModel : ObservableObject
         _records = records;
         _navigator = navigator;
         Countdown = new CountdownViewModel(Changed);
-        Items.CollectionChanged += (_, _) => Renumber();
+        Items.CollectionChanged += (_, _) =>
+        {
+            Renumber();
+            Library?.SetAddedIds(AddedSourceIds());
+        };
     }
+
+    /// <summary>Source ids (<see cref="ServiceItem.SourceId"/>) of everything already in the service, for the
+    /// library panel to mark as added.</summary>
+    private IReadOnlySet<Guid> AddedSourceIds() => Items.Select(i => i.Model.SourceId).OfType<Guid>().ToHashSet();
 
     // ===== Temporizador =====
 
@@ -761,11 +769,12 @@ public sealed partial class LiveConsoleViewModel : ObservableObject
         _ = LoadLibraryAsync(library);
     }
 
-    private static async Task LoadLibraryAsync(LibraryPanelViewModel library)
+    private async Task LoadLibraryAsync(LibraryPanelViewModel library)
     {
         try
         {
             await library.LoadAsync();
+            library.SetAddedIds(AddedSourceIds());
         }
         catch (Exception)
         {

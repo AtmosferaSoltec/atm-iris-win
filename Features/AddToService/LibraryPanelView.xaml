@@ -91,9 +91,24 @@
                     Command="{x:Bind Owner.AddCommand}"
                     CommandParameter="{x:Bind}"
                     Style="{StaticResource IrisSubtleIconButtonStyle}"
-                    ToolTipService.ToolTip="Agregar al servicio">
+                    ToolTipService.ToolTip="Agregar al servicio"
+                    Visibility="{x:Bind IsAddable, Mode=OneWay}">
                     <FontIcon FontSize="{StaticResource IrisCaptionFontSize}" Glyph="&#xE710;" Style="{StaticResource IrisIconStyle}" />
                 </Button>
+
+                <!--  Already in the service: a green check instead of "+"; dragging and double click do nothing.  -->
+                <FontIcon
+                    Grid.Column="3"
+                    Width="{StaticResource IrisCompactButtonSize}"
+                    Height="{StaticResource IrisCompactButtonSize}"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    AutomationProperties.Name="Ya está en el servicio"
+                    FontSize="{StaticResource IrisCaptionFontSize}"
+                    Foreground="{StaticResource IrisSuccessBrush}"
+                    Glyph="&#xE73E;"
+                    ToolTipService.ToolTip="Ya está en el servicio"
+                    Visibility="{x:Bind IsAdded, Mode=OneWay}" />
             </Grid>
         </DataTemplate>
     </UserControl.Resources>

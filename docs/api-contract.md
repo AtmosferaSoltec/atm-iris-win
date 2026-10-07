@@ -438,9 +438,11 @@ type SyncPage = {
     songs: Song[];                // completas, con secciones
     media: MediaAsset[];
     serviceRecords: ServiceRecord[];
+    servicePlan: ServicePlanItem[]; // §15
   };
   deleted: {                      // ids borrados (suave) después de `since`
     people: string[]; serviceTypes: string[]; songs: string[]; media: string[]; serviceRecords: string[];
+    servicePlan: string[];
   };
   cursor: string;                 // guardar y mandar como `since` la próxima vez
   hasMore: boolean;               // si es true, pedir otra página de inmediato con el cursor nuevo
@@ -530,7 +532,39 @@ type ServiceRecord = ServiceRecordInput & {
 
 ---
 
-## 15. Salud
+## 15. Plan de servicio — `/service-plan`
+
+Lo que la web adelanta para el próximo servicio, sin importar el tipo (General, Escuela Dominical, Jóvenes...):
+cuando una consola abre, ya está cargado. No guarda historial por servicio, solo el estado actual; se agrega y se
+quita desde cualquier cliente (web, iPad, Windows) y el cambio se ve en los demás por `/sync` (§12, es la 6.ª
+entidad del feed).
+
+| Método | Ruta | Cuerpo | Respuesta | Acceso |
+|---|---|---|---|---|
+| GET | `/service-plan` | — | `ServicePlanItem[]` (en orden) | Sesión |
+| POST | `/service-plan` | `{ id?, kind, refId }` | 201 `ServicePlanItem` (200 si el `id` ya existía) | Sesión |
+| PUT | `/service-plan/:id/position` | `{ position }` | 204 | Sesión |
+| DELETE | `/service-plan/:id` | — | 204 | Sesión |
+| DELETE | `/service-plan` | — | 204 (vacía todo el plan) | Sesión |
+
+```ts
+type ServicePlanItem = {
+  id: string; kind: "song" | "media"; refId: string; position: number;
+  createdAt: string; updatedAt: string;
+};
+```
+
+- `refId` es el id de una canción (§10) o un medio (§11); la API responde 400 `VALIDATION_FAILED` (`errors.refId`)
+  si no existe.
+- Si la canción o el medio referenciado se borra, su elemento del plan se borra (suave) con él: nunca queda una
+  referencia colgando (mismo principio que `projectionDefaultBackground`, §6, pero aquí sí se limpia porque el
+  plan no tiene sentido con una referencia que ya no existe).
+- `position` ordena la lista desde 0; `PUT .../position` reubica un elemento y recorre los demás para no dejar
+  huecos ni choques.
+
+---
+
+## 16. Salud
 
 | Método | Ruta | Respuesta |
 |---|---|---|
