@@ -22,7 +22,8 @@ if grep -q "/downloads/windows/" "$SITE"; then
   exit 0
 fi
 
-cp "$SITE" "$SITE.bak-downloads"
+BACKUP=/root/iris.atmosferast.com.bak-downloads
+cp "$SITE" "$BACKUP"
 
 python3 - "$SITE" <<'PY'
 import sys
@@ -51,6 +52,6 @@ if nginx -t; then
   echo "Listo: /downloads/windows/ servido desde $DIR."
 else
   echo "nginx -t falló: restauro la copia y no recargo." >&2
-  mv "$SITE.bak-downloads" "$SITE"
+  mv "$BACKUP" "$SITE"
   exit 1
 fi
