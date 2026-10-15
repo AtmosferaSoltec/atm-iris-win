@@ -71,6 +71,8 @@ App al abrir:  GET /app-version?platform=windows&version=1.0.0   (API, público)
 
 ## Lo que falta (necesita Windows o el VPS)
 
+> La pasada de pruebas, paso a paso y con tabla de resultados, está en [`PRUEBAS-WINDOWS.md`](PRUEBAS-WINDOWS.md).
+
 **[Win]** — probar de verdad (nada de esto se puede correr en la Mac):
 
 1. `dotnet build Iris.csproj -p:Platform=x64` sin errores (el XAML nuevo: `UpdateGateSheet`, y los cambios de bienvenida/login).

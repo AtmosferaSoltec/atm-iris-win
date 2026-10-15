@@ -13,7 +13,11 @@ namespace Iris.Shell.Platform;
 /// </summary>
 public sealed class VelopackInstaller : IInstaller
 {
-    private readonly UpdateManager _manager = new(WebLinks.WindowsFeed);
+    // IRIS_FEED_URL points a test machine at a local feed (docs/plans/12, PRUEBAS-WINDOWS.md) without publishing anything.
+    private static string FeedUrl =>
+        Environment.GetEnvironmentVariable("IRIS_FEED_URL") is { Length: > 0 } url ? url : WebLinks.WindowsFeed;
+
+    private readonly UpdateManager _manager = new(FeedUrl);
     private UpdateInfo? _pending;
 
     public bool IsInstalled => _manager.IsInstalled;
