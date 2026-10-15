@@ -258,10 +258,13 @@ public sealed partial class FakeIrisApiHandler : HttpMessageHandler
         };
     }
 
-    /// <summary>api-contract §17. The fake publishes 1.0.0: nobody is asked to update in Fake mode.</summary>
+    /// <summary>
+    /// api-contract §17. The fake publishes 1.0.0, so nobody is asked to update in Fake mode, unless the
+    /// <c>IRIS_FAKE_APP_VERSION</c> variable says otherwise (to test the update flow without a real API).
+    /// </summary>
     private HttpResponseMessage AppVersionCheck(Ctx c)
     {
-        const string published = "1.0.0";
+        var published = Environment.GetEnvironmentVariable("IRIS_FAKE_APP_VERSION") is { Length: > 0 } fake ? fake : "1.0.0";
         var version = c.Query["version"] ?? "0.0.0";
         var check = new Iris.Core.Updates.AppVersionCheckDto("windows", published, Iris.Core.Updates.AppVersion.Compare(version, published) < 0, null, null);
         return Ok(check, IrisJsonContext.Default.AppVersionCheckDto);

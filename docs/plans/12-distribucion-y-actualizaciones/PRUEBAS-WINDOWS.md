@@ -70,22 +70,25 @@ Con la cuenta de pruebas (crea antes en la web una letra y sube una imagen):
 Desde "Aplicaciones instaladas": la app se va y `%LOCALAPPDATA%\Iris` (datos, sesión, copia local) **permanece**. Al
 reinstalar, la sesión sigue.
 
-### 6. Actualización obligatoria (escenario local, sin tocar producción)
-Objetivo: instalar una versión "vieja" y que la app se actualice sola a una "nueva".
+### 6. Actualización obligatoria (escenario local, sin API y sin tocar producción)
+Objetivo: instalar una versión "vieja" y que la app se actualice sola a una "nueva". **No hace falta la API local**: en modo
+Fake, `IRIS_FAKE_APP_VERSION` hace que la API falsa publique la versión que digas.
 
 1. `Scripts\Release-Windows.ps1 -Version 1.0.0 -SkipDownload` → instala `Releases\Iris-Setup.exe` en la PC.
-2. Cambia `VERSION` a `1.0.1` **solo en tu copia local** (no lo subas) y corre
-   `Scripts\Release-Windows.ps1 -Version 1.0.1 -SkipDownload`. `Releases\` ahora tiene ambas versiones.
+   (Usa tu build local, no el de la web: el instalador publicado no entiende `IRIS_FEED_URL`.)
+2. Con `VERSION` en `1.0.1` **solo en tu copia local** (no lo subas): `Scripts\Release-Windows.ps1 -Version 1.0.1 -SkipDownload`.
+   `Releases\` queda con ambas versiones y un `releases.win.json` que ya apunta a la 1.0.1.
 3. Sirve la carpeta: `cd Releases; python -m http.server 8099`.
-4. API local: en `app_versions` pon `windows` en `1.0.1`
-   (`pnpm db:set-app-version windows 1.0.1`, en `atm-iris-api` con su base **local**).
-5. Abre la app instalada con la variable `IRIS_FEED_URL=http://localhost:8099/` y apunta la app a tu API local
-   (Ctrl+Shift+F12 → Conexión → modo Live, dirección `http://localhost:3020/api/v1` o el puerto que uses).
-6. Esperado: aparece **"Hay una nueva versión de Iris"**; **Esc y clic fuera no lo cierran**; **Actualizar** muestra el
+4. Abre la app instalada con dos variables de entorno: `IRIS_FEED_URL=http://localhost:8099/` y
+   `IRIS_FAKE_APP_VERSION=1.0.1`, y ponla en modo **Fake** (Ctrl+Shift+F12 → Conexión).
+5. Esperado: aparece **"Hay una nueva versión de Iris"**; **Esc y clic fuera no lo cierran**; **Actualizar** muestra el
    progreso, descarga, la app se reinicia y queda en 1.0.1 **con la sesión intacta**.
-7. Variantes: (a) con la red cortada no aparece nada; (b) con un servicio en curso no aparece, y sí al volver a Inicio;
-   (c) con la base en `1.0.1` pero el feed solo con `1.0.0` la app abre normal (no se bloquea).
-8. Deja la base local como estaba (`pnpm db:set-app-version windows 1.0.0`).
+6. Variantes: (a) con "simular sin conexión" activado en Conexión no aparece nada; (b) con un servicio en curso no aparece,
+   y sí al volver a Inicio; (c) con `IRIS_FAKE_APP_VERSION=1.0.1` pero el feed solo con la 1.0.0, la app abre normal.
+7. Limpia: cierra el servidor y quita las variables.
+
+> La prueba contra la API real (`updateRequired` desde la base) ya la cubren las pruebas e2e de `atm-iris-api` y se
+> verificó en producción con `curl`; aquí solo se prueba el comportamiento de la app.
 
 ## Qué hacer con lo que encuentres
 
