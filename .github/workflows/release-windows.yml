@@ -81,24 +81,59 @@ jobs:
         shell: pwsh
         run: Copy-Item (Get-ChildItem Releases -Filter '*Setup.exe' | Select-Object -First 1).FullName Releases/Iris-Setup.exe
 
+      - name: Keep the build for the upload job
+        uses: actions/upload-artifact@v4
+        with:
+          name: releases
+          path: Releases
+          if-no-files-found: error
+          retention-days: 7
+
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+
+  # Se sube desde Linux (igual que la API y la web): en el runner de Windows `install`/`chmod` no
+  # pueden proteger ~/.ssh y ssh rechaza la clave.
+  upload:
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: releases
+          path: Releases
+
       - name: Upload to the server
-        shell: bash
         env:
           SSH_HOST: ${{ secrets.SSH_HOST }}
           SSH_USER: ${{ secrets.SSH_USER }}
           SSH_KEY: ${{ secrets.SSH_KEY }}
         run: |
           set -euo pipefail
+          for name in SSH_HOST SSH_USER SSH_KEY; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Falta el secreto $name en este repositorio (Settings > Secrets and variables > Actions)."
+              exit 1
+            fi
+          done
           install -m 700 -d ~/.ssh
           printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          opts="-i $HOME/.ssh/deploy_key -o StrictHostKeyChecking=accept-new"
+          opts=(-i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20)
+          target="$SSH_USER@$SSH_HOST"
           # Primero paquetes e instalador; el feed (releases.win.json) al final, para que ninguna app vea una
           # versión cuyo paquete todavía no terminó de subir.
-          scp $opts Releases/*.nupkg Releases/Iris-Setup.exe "$SSH_USER@$SSH_HOST:$DOWNLOADS_PATH/"
-          scp $opts Releases/releases.*.json "$SSH_USER@$SSH_HOST:$DOWNLOADS_PATH/"
+          scp "${opts[@]}" Releases/*.nupkg Releases/Iris-Setup.exe "$target:$DOWNLOADS_PATH/"
+          scp "${opts[@]}" Releases/releases.*.json "$target:$DOWNLOADS_PATH/"
 
       - name: Next step
-        shell: pwsh
         run: |
-          "### Windows ${{ steps.v.outputs.version }} publicado`n`nPara exigirla a los clientes, en **atm-iris-api**:`n`n    pnpm db:set-app-version windows ${{ steps.v.outputs.version }}`n`nInstalador: https://iris.atmosferast.com/downloads" >> $env:GITHUB_STEP_SUMMARY
+          {
+            echo "### Windows ${{ needs.release.outputs.version }} publicado"
+            echo
+            echo "Para exigirla a los clientes, en **atm-iris-api**:"
+            echo
+            echo '    pnpm db:set-app-version windows ${{ needs.release.outputs.version }}'
+            echo
+            echo "Instalador: https://iris.atmosferast.com/downloads"
+          } >> "$GITHUB_STEP_SUMMARY"
