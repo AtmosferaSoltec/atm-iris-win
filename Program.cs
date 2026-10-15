@@ -19,10 +19,10 @@ public static class Program
         VelopackApp.Build().Run();
 
         WinRT.ComWrappersSupport.InitializeComWrappers();
-        Application.Start(_ =>
+        Application.Start(callbackParams =>
         {
             SynchronizationContext.SetSynchronizationContext(new DispatcherQueueSynchronizationContext(DispatcherQueue.GetForCurrentThread()));
-            _ = new App();
+            var app = new App();
         });
     }
 }
