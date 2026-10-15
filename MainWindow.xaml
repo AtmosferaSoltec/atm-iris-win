@@ -5,6 +5,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="using:Iris.DesignSystem.Controls"
     xmlns:connection="using:Iris.Features.Connection"
+    xmlns:updates="using:Iris.Features.Updates"
     Title="Iris">
 
     <Window.SystemBackdrop>
@@ -21,6 +22,8 @@
 
         <!--  Conexión (Ctrl+Shift+F12): mode, API address, offline switch  -->
         <connection:ConnectionSheet x:Name="ConnectionDialog" />
+        <!--  Nueva versión: obligatoria, nunca durante un servicio  -->
+        <updates:UpdateGateSheet x:Name="UpdateDialog" />
         <controls:IrisSplash x:Name="Splash" Finished="OnSplashFinished" />
     </Grid>
 </Window>

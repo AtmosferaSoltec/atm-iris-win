@@ -137,7 +137,11 @@ public sealed partial class MainWindow : Window
         ConnectionDialog.ViewModel.Open();
     }
 
-    private void OnSplashFinished(object? sender, System.EventArgs e) => Root.Children.Remove(Splash);
+    private void OnSplashFinished(object? sender, System.EventArgs e)
+    {
+        Root.Children.Remove(Splash);
+        _ = UpdateDialog.ViewModel.CheckAsync();
+    }
 
     private void ShowScreen()
     {

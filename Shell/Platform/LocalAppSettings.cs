@@ -67,6 +67,12 @@ public sealed class LocalAppSettings : IAppSettings
 
     public event EventHandler? SimulateOfflineChanged;
 
+    public bool HasSeenWelcome(Guid userId) => Read(WelcomeKey(userId)) == "1";
+
+    public void MarkWelcomeSeen(Guid userId) => Write(WelcomeKey(userId), "1");
+
+    private static string WelcomeKey(Guid userId) => $"WelcomeSeen.{userId:N}";
+
     private string? Read(string key) =>
         _container is not null ? _container.Values[key] as string : _file.GetValueOrDefault(key);
 

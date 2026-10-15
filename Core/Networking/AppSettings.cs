@@ -22,6 +22,11 @@ public interface IAppSettings
 
     /// <summary>Raised when <see cref="SimulateOffline"/> changes (on any thread).</summary>
     event EventHandler? SimulateOfflineChanged;
+
+    /// <summary>The first-run welcome is shown once per person on this computer.</summary>
+    bool HasSeenWelcome(Guid userId);
+
+    void MarkWelcomeSeen(Guid userId);
 }
 
 public sealed class InMemoryAppSettings : IAppSettings
@@ -43,4 +48,10 @@ public sealed class InMemoryAppSettings : IAppSettings
     }
 
     public event EventHandler? SimulateOfflineChanged;
+
+    private readonly System.Collections.Generic.HashSet<Guid> _welcomeSeen = [];
+
+    public bool HasSeenWelcome(Guid userId) => _welcomeSeen.Contains(userId);
+
+    public void MarkWelcomeSeen(Guid userId) => _welcomeSeen.Add(userId);
 }

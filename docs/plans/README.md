@@ -46,6 +46,7 @@
 | 09 | [TV y reproducción](09-tv-y-reproduccion/README.md): segundo monitor en caliente, audio y video reales | [~] programada; falta probar con dos monitores (lista en la fase 11) |
 | 10 | [Calidad y entrega](10-calidad-y-entrega/README.md): pruebas, limpieza, documentación, reporte | [x] verificada contra el servidor real (2026-10-07); falta solo la revisión visual |
 | 11 | [Paridad con el iPad y escritorio](11-paridad-ipad-y-escritorio/README.md): contrato al día (una cuenta, módulos del sistema, Proyección, música en la nube), barra de herramientas y consola en tres columnas | [~] programada en la Mac; **verificar en Windows con su lista** |
+| 12 | [Distribución y actualizaciones](12-distribucion-y-actualizaciones/README.md): `Iris-Setup.exe` con Velopack, aviso obligatorio de versión (API + base), publicación en el VPS | [~] programada y verificada en la Mac; **probar en Windows con su lista** |
 
 Marca cada casilla al terminar la fase y completa su sección *Desviaciones*.
 

@@ -569,3 +569,31 @@ type ServicePlanItem = {
 | Método | Ruta | Respuesta |
 |---|---|---|
 | GET | `/health` | **Pública**. `{ data: { status: "ok", info: { database: { status: "up" }, storage: { status: "up" } } } }` |
+
+---
+
+## 17. Versión de las apps — `/app-version`
+
+Las apps de escritorio y de iPad preguntan al abrir si su versión sigue vigente. Si es anterior a la publicada, muestran
+un aviso que **obliga a actualizar** antes de continuar. La versión publicada de cada plataforma se cambia a mano en la
+base (tabla `app_versions`, o `pnpm db:set-app-version`) **cuando la versión nueva ya se puede descargar**.
+
+| Método | Ruta | Respuesta | Acceso |
+|---|---|---|---|
+| GET | `/app-version?platform=ios\|windows&version=1.0.0` | `AppVersionCheck` | **Pública** (se consulta antes de iniciar sesión) |
+
+```ts
+type AppVersionCheck = {
+  platform: "ios" | "windows";
+  latestVersion: string;          // la versión publicada hoy
+  updateRequired: boolean;        // true si `version` es anterior a `latestVersion`
+  downloadUrl: string | null;     // a dónde lleva "Actualizar" (iPad: TestFlight o App Store)
+  notes: string | null;           // qué trae, en una línea
+};
+```
+
+- Las versiones son números separados por punto (`1.0`, `1.0.1`, `2.3.4.5`) y se comparan por número: `1.10.0` es mayor
+  que `1.9.0`; las partes que faltan valen 0 (`1.0` = `1.0.0`). Cualquier otro formato responde 400 `VALIDATION_FAILED`.
+- **Un fallo nunca bloquea a nadie.** Sin conexión, con la API caída o con cualquier error (incluido 400), la app abre
+  normal: solo `updateRequired: true` obliga a actualizar. Nunca se muestra con un servicio en curso.
+- Sin fila para la plataforma, `updateRequired` es `false`.

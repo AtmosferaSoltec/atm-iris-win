@@ -13,8 +13,6 @@ namespace Iris.Features.Auth;
 
 public enum AuthField
 {
-    ChurchName,
-    LeaderName,
     Email,
     Password,
 }
@@ -51,45 +49,17 @@ public sealed partial class AuthViewModel : ObservableObject
     /// <summary>Asks the view to focus a field (first invalid field after a failed submit).</summary>
     public event EventHandler<AuthField>? FocusRequested;
 
-    public IList<string> Modes { get; } = ["Iniciar sesión", "Crear cuenta"];
+    public string Title => "Te damos la bienvenida";
 
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsSignUp), nameof(IsSignIn), nameof(Title), nameof(Subtitle), nameof(SubmitText), nameof(PasswordPlaceholder), nameof(PasswordHint))]
-    public partial int ModeIndex { get; set; }
+    public string Subtitle => "Ingresa con el correo de tu iglesia para preparar el servicio.";
 
-    public bool IsSignUp => ModeIndex == 1;
-
-    public bool IsSignIn => !IsSignUp;
-
-    public string Title => IsSignUp ? "Crea el espacio de tu iglesia" : "Te damos la bienvenida";
-
-    public string Subtitle => IsSignUp
-        ? "Configúralo en menos de un minuto y empieza a proyectar."
-        : "Ingresa con el correo de tu iglesia para preparar el servicio.";
-
-    public string SubmitText => IsSignUp ? "Crear cuenta" : "Entrar";
-
-    public string PasswordPlaceholder => IsSignUp ? "Crea una contraseña" : "Tu contraseña";
-
-    public string? PasswordHint => IsSignUp ? "Mínimo 8 caracteres." : null;
-
-    [ObservableProperty]
-    public partial string ChurchName { get; set; } = string.Empty;
-
-    [ObservableProperty]
-    public partial string LeaderName { get; set; } = string.Empty;
+    public string SubmitText => "Entrar";
 
     [ObservableProperty]
     public partial string Email { get; set; } = string.Empty;
 
     [ObservableProperty]
     public partial string Password { get; set; } = string.Empty;
-
-    [ObservableProperty]
-    public partial string? ChurchNameError { get; set; }
-
-    [ObservableProperty]
-    public partial string? LeaderNameError { get; set; }
 
     [ObservableProperty]
     public partial string? EmailError { get; set; }
@@ -129,16 +99,6 @@ public sealed partial class AuthViewModel : ObservableObject
 
     public bool IsRecoveryOpen => Recovery is not null;
 
-    partial void OnModeIndexChanged(int value)
-    {
-        ClearErrors();
-        SuccessMessage = null;
-    }
-
-    partial void OnChurchNameChanged(string value) => ChurchNameError = BannerMessage = null;
-
-    partial void OnLeaderNameChanged(string value) => LeaderNameError = BannerMessage = null;
-
     partial void OnEmailChanged(string value) => EmailError = BannerMessage = null;
 
     partial void OnPasswordChanged(string value) => PasswordError = BannerMessage = null;
@@ -177,7 +137,7 @@ public sealed partial class AuthViewModel : ObservableObject
 
         ClearErrors();
 
-        if (!(IsSignUp ? ValidateSignUp() : ValidateSignIn()))
+        if (!ValidateSignIn())
         {
             return;
         }
@@ -187,9 +147,7 @@ public sealed partial class AuthViewModel : ObservableObject
         IsSubmitting = true;
         try
         {
-            var session = IsSignUp
-                ? await _auth.SignUpAsync(new SignUpRequest(ChurchName, LeaderName, Email, Password))
-                : await _auth.SignInAsync(new SignInCredentials(Email, Password));
+            var session = await _auth.SignInAsync(new SignInCredentials(Email, Password));
             StopShowcase();
             _session.SignIn(session);
         }
@@ -235,12 +193,6 @@ public sealed partial class AuthViewModel : ObservableObject
         {
             switch (field)
             {
-                case "churchName":
-                    ChurchNameError = message;
-                    break;
-                case "fullName":
-                    LeaderNameError = message;
-                    break;
                 case "email":
                     EmailError = message;
                     break;
@@ -263,37 +215,13 @@ public sealed partial class AuthViewModel : ObservableObject
     private void OnRecoveryCompleted(string email)
     {
         Recovery = null;
-        ModeIndex = 0;
         Email = email;
         Password = string.Empty;
         SuccessMessage = "Tu contraseña quedó actualizada. Inicia sesión con la nueva.";
     }
 
-    private bool ValidateSignUp()
-    {
-        ChurchNameError = AuthValidator.ChurchName(ChurchName);
-        LeaderNameError = AuthValidator.LeaderName(LeaderName);
-        EmailError = AuthValidator.Email(Email);
-        PasswordError = AuthValidator.NewPassword(Password);
-
-        AuthField? firstInvalid =
-            ChurchNameError is not null ? AuthField.ChurchName
-            : LeaderNameError is not null ? AuthField.LeaderName
-            : EmailError is not null ? AuthField.Email
-            : PasswordError is not null ? AuthField.Password
-            : null;
-
-        if (firstInvalid is { } field)
-        {
-            FocusRequested?.Invoke(this, field);
-            return false;
-        }
-
-        return true;
-    }
-
     private void ClearErrors()
     {
-        ChurchNameError = LeaderNameError = EmailError = PasswordError = BannerMessage = null;
+        EmailError = PasswordError = BannerMessage = null;
     }
 }

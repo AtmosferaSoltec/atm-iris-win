@@ -42,6 +42,8 @@ public static class AppDependencies
         AddInfrastructure(services, settings ?? new InMemoryAppSettings { DataMode = DataMode.Mock });
 
         services.AddSingleton<IAuthService, MockAuthService>();
+        services.AddSingleton<Iris.Core.Updates.IAppVersionApi, Iris.Core.Updates.NoAppVersionApi>();
+        services.AddSingleton<Iris.Core.Updates.IInstaller, Iris.Core.Updates.NoInstaller>();
         services.AddSingleton<IShowcaseContentProvider, MockShowcaseContentProvider>();
         services.AddSingleton<IServicePlanRepository, MockServicePlanRepository>();
         services.AddSingleton<IBackgroundRepository, MockBackgroundRepository>();
@@ -72,6 +74,8 @@ public static class AppDependencies
 
         // Still design data in every mode: the lyrics of the sign-in showcase.
         services.AddSingleton<IAuthService, LiveAuthService>();
+        services.AddSingleton<Iris.Core.Updates.IAppVersionApi, Iris.Core.Updates.LiveAppVersionApi>();
+        services.AddSingleton<Iris.Core.Updates.IInstaller, VelopackInstaller>();
         services.AddSingleton<IShowcaseContentProvider, MockShowcaseContentProvider>();
         services.AddSingleton<IServicePlanRepository, MockServicePlanRepository>();
         services.AddSingleton<IBackgroundRepository, LiveBackgroundRepository>();
@@ -198,6 +202,7 @@ public static class AppDependencies
         services.AddSingleton<TopBarViewModel>();
         services.AddSingleton<SyncIndicatorViewModel>();
         services.AddSingleton<DataWatcher>();
+        services.AddSingleton<Iris.Features.Updates.UpdateGateViewModel>();
         services.AddTransient<AuthViewModel>();
         services.AddTransient<ConnectionViewModel>();
         services.AddTransient<HomeViewModel>();

@@ -24,6 +24,9 @@ public sealed partial class AuthPage : Page
 
     public AuthViewModel ViewModel { get; } = App.GetService<AuthViewModel>();
 
+    private async void OnCreateAccountClick(object sender, RoutedEventArgs e) =>
+        await Windows.System.Launcher.LaunchUriAsync(new Uri(Iris.Core.WebLinks.App));
+
     private void OnScrollerSizeChanged(object sender, SizeChangedEventArgs e)
     {
         // Wide layout fills the window so the hero and the panel can center vertically.
@@ -34,11 +37,7 @@ public sealed partial class AuthPage : Page
     // Enter moves to the next visible field; on the last one it submits.
     private void OnFieldSubmitted(object? sender, EventArgs e)
     {
-        IrisTextField? next =
-            ReferenceEquals(sender, ChurchField) ? LeaderField
-            : ReferenceEquals(sender, LeaderField) ? EmailField
-            : ReferenceEquals(sender, EmailField) ? PasswordField
-            : null;
+        IrisTextField? next = ReferenceEquals(sender, EmailField) ? PasswordField : null;
 
         if (next is not null)
         {
@@ -81,8 +80,6 @@ public sealed partial class AuthPage : Page
 
     private void OnFocusRequested(object? sender, AuthField field) => (field switch
     {
-        AuthField.ChurchName => ChurchField,
-        AuthField.LeaderName => LeaderField,
         AuthField.Email => EmailField,
         _ => PasswordField,
     }).FocusInput();

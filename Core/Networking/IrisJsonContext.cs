@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Iris.Core.Networking.Dto;
+using Iris.Core.Updates;
 
 namespace Iris.Core.Networking;
 
@@ -37,6 +38,7 @@ public sealed class IsoDateConverter : JsonConverter<DateTimeOffset>
 [JsonSerializable(typeof(MessageDto))]
 [JsonSerializable(typeof(ValidDto))]
 [JsonSerializable(typeof(HealthDto))]
+[JsonSerializable(typeof(AppVersionCheckDto))]
 [JsonSerializable(typeof(ApiErrorDto))]
 [JsonSerializable(typeof(List<DeviceSessionDto>))]
 [JsonSerializable(typeof(ChurchDto))]

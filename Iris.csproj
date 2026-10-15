@@ -72,7 +72,23 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="8.0.1" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2705" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.5.1" />
+    <PackageReference Include="Velopack" Version="1.2.161" />
   </ItemGroup>
+
+  <!--
+    Installer build (docs/plans/12): `dotnet publish -r win-x64 -p:IrisInstaller=true`. Unpackaged and self-contained, so a
+    clean PC needs neither .NET nor the Windows App SDK; Velopack packs the output. Our own Main (Program.cs) runs
+    VelopackApp first. Day-to-day work (F5, the MSIX profile) is unaffected.
+  -->
+  <PropertyGroup>
+    <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(IrisInstaller)' == 'true'">
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <SelfContained>true</SelfContained>
+    <EnableMsixTooling>false</EnableMsixTooling>
+  </PropertyGroup>
 
   <!--
     Defining the "HasPackageAndPublishMenuAddedByProject" property here allows the Solution

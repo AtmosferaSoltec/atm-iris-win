@@ -30,6 +30,7 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="8.0.1" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2705" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.5.1" />
+    <PackageReference Include="Velopack" Version="1.2.161" />
   </ItemGroup>
   <Target Name="DumpRefs" AfterTargets="CoreCompile">
     <WriteLinesToFile File="$(MSBuildProjectDirectory)/obj/refs.txt" Lines="@(ReferencePath)" Overwrite="true" />

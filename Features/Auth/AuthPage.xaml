@@ -100,7 +100,7 @@
                     </StackPanel>
                 </Grid>
 
-                <!--  Sign in / sign up panel  -->
+                <!--  Sign in panel  -->
                 <Border
                     x:Name="Panel"
                     Grid.Row="1"
@@ -116,32 +116,10 @@
                             <TextBlock Style="{StaticResource IrisCalloutTextStyle}" Text="{x:Bind ViewModel.Subtitle, Mode=OneWay}" />
                         </StackPanel>
 
-                        <controls:IrisSegmentedControl Items="{x:Bind ViewModel.Modes}" SelectedIndex="{x:Bind ViewModel.ModeIndex, Mode=TwoWay}" />
-
                         <controls:IrisBanner Message="{x:Bind ViewModel.BannerMessage, Mode=OneWay}" />
                         <controls:IrisBanner Kind="Success" Message="{x:Bind ViewModel.SuccessMessage, Mode=OneWay}" />
 
                         <StackPanel Spacing="{StaticResource IrisSpacingMd}">
-                            <controls:IrisTextField
-                                x:Name="ChurchField"
-                                ErrorMessage="{x:Bind ViewModel.ChurchNameError, Mode=OneWay}"
-                                Glyph="&#xE825;"
-                                Kind="Organization"
-                                Label="Nombre de la iglesia"
-                                Placeholder="Iglesia Vida Nueva"
-                                Submitted="OnFieldSubmitted"
-                                Text="{x:Bind ViewModel.ChurchName, Mode=TwoWay}"
-                                Visibility="{x:Bind ViewModel.IsSignUp, Mode=OneWay}" />
-                            <controls:IrisTextField
-                                x:Name="LeaderField"
-                                ErrorMessage="{x:Bind ViewModel.LeaderNameError, Mode=OneWay}"
-                                Glyph="&#xE77B;"
-                                Kind="Name"
-                                Label="Responsable"
-                                Placeholder="Nombre y apellido"
-                                Submitted="OnFieldSubmitted"
-                                Text="{x:Bind ViewModel.LeaderName, Mode=TwoWay}"
-                                Visibility="{x:Bind ViewModel.IsSignUp, Mode=OneWay}" />
                             <controls:IrisTextField
                                 x:Name="EmailField"
                                 ErrorMessage="{x:Bind ViewModel.EmailError, Mode=OneWay}"
@@ -155,22 +133,20 @@
                                 x:Name="PasswordField"
                                 ErrorMessage="{x:Bind ViewModel.PasswordError, Mode=OneWay}"
                                 Glyph="&#xE72E;"
-                                Hint="{x:Bind ViewModel.PasswordHint, Mode=OneWay}"
                                 Kind="Password"
                                 Label="Contraseña"
-                                Placeholder="{x:Bind ViewModel.PasswordPlaceholder, Mode=OneWay}"
+                                Placeholder="Tu contraseña"
                                 Submitted="OnFieldSubmitted"
                                 Text="{x:Bind ViewModel.Password, Mode=TwoWay}" />
                             <Button
                                 HorizontalAlignment="Right"
                                 Command="{x:Bind ViewModel.PresentPasswordRecoveryCommand}"
                                 Content="¿Olvidaste tu contraseña?"
-                                Style="{StaticResource IrisLinkButtonStyle}"
-                                Visibility="{x:Bind ViewModel.IsSignIn, Mode=OneWay}" />
+                                Style="{StaticResource IrisLinkButtonStyle}" />
                         </StackPanel>
 
                         <Button
-                            AutomationProperties.Name="{x:Bind ViewModel.SubmitText, Mode=OneWay}"
+                            AutomationProperties.Name="{x:Bind ViewModel.SubmitText}"
                             Command="{x:Bind ViewModel.SubmitCommand}"
                             Style="{StaticResource IrisPrimaryButtonStyle}">
                             <Grid>
@@ -183,13 +159,18 @@
                             </Grid>
                         </Button>
 
-                        <TextBlock
-                            HorizontalAlignment="Center"
-                            Style="{StaticResource IrisCaptionTextStyle}"
-                            TextAlignment="Center"
-                            Visibility="{x:Bind ViewModel.IsSignUp, Mode=OneWay}">
-                            <Run Text="Al crear tu cuenta aceptas los " /><Hyperlink Foreground="{StaticResource IrisTextSecondaryBrush}" UnderlineStyle="None"><Bold>Términos</Bold></Hyperlink><Run Text=" y la " /><Hyperlink Foreground="{StaticResource IrisTextSecondaryBrush}" UnderlineStyle="None"><Bold>Política de privacidad</Bold></Hyperlink><Run Text="." />
-                        </TextBlock>
+                        <!--  Accounts are created on the web only  -->
+                        <StackPanel HorizontalAlignment="Center" Spacing="{StaticResource IrisSpacingXxs}">
+                            <TextBlock
+                                HorizontalAlignment="Center"
+                                Style="{StaticResource IrisCalloutTextStyle}"
+                                Text="¿Tu iglesia aún no tiene cuenta?" />
+                            <Button
+                                HorizontalAlignment="Center"
+                                Click="OnCreateAccountClick"
+                                Content="Crea tu cuenta en la web"
+                                Style="{StaticResource IrisLinkButtonStyle}" />
+                        </StackPanel>
                     </StackPanel>
                 </Border>
             </Grid>

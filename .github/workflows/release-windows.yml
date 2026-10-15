@@ -1,0 +1,104 @@
+# Publica el instalador de Windows al empujar a la rama `production`.
+# Plan: docs/plans/12-distribucion-y-actualizaciones/README.md
+#
+# Para sacar una versión nueva:
+#   1. Sube el número en el archivo VERSION (en la raíz del repo), p. ej. 1.0.1.
+#   2. Empuja a `production`.
+#   3. Cuando el workflow termine, publica esa versión en la base para exigirla (ver el resumen del job):
+#        pnpm db:set-app-version windows 1.0.1      (en atm-iris-api)
+#
+# Secretos del repo (los mismos nombres que usan atm-iris-web y atm-iris-api): SSH_HOST, SSH_USER, SSH_KEY.
+# Los flags de `vpk` pueden cambiar entre versiones: verifica con `vpk pack -h` si falla `Pack`.
+name: Release Windows
+
+on:
+  push:
+    branches: [production]
+  # Permite relanzar sin empujar un commit vacío.
+  workflow_dispatch:
+
+concurrency:
+  group: release-windows
+  cancel-in-progress: false
+
+env:
+  # Carpeta del VPS que nginx sirve en https://iris.atmosferast.com/downloads/windows/
+  DOWNLOADS_PATH: /var/www/iris-downloads/windows
+  FEED_URL: https://iris.atmosferast.com/downloads/windows/
+  PACK_ID: IrisConsole
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Version
+        id: v
+        shell: pwsh
+        run: |
+          $v = (Get-Content VERSION -Raw).Trim()
+          if ($v -notmatch '^\d+\.\d+\.\d+$') { throw "VERSION debe verse como 1.0.1 y dice: '$v'" }
+          "version=$v" >> $env:GITHUB_OUTPUT
+
+      # Una versión ya publicada no se puede reemplazar: los clientes que la tienen no la volverían a bajar.
+      - name: Check the version is new
+        shell: pwsh
+        run: |
+          try { $feed = Invoke-RestMethod -Uri "${{ env.FEED_URL }}releases.win.json" } catch { Write-Host 'Aún no hay publicación previa.'; exit 0 }
+          $published = @($feed.Assets | Where-Object { $_.Version -eq '${{ steps.v.outputs.version }}' })
+          if ($published.Count -gt 0) { throw "La versión ${{ steps.v.outputs.version }} ya está publicada. Sube el número en VERSION." }
+
+      - name: Tests
+        run: dotnet test Tests/Iris.Tests.csproj -c Release
+
+      - name: Publish
+        run: >
+          dotnet publish Iris.csproj -c Release -r win-x64 --self-contained
+          -p:Platform=x64 -p:IrisInstaller=true -p:Version=${{ steps.v.outputs.version }} -o publish
+
+      - name: Install vpk
+        run: dotnet tool install -g vpk --version 1.2.161
+
+      # Trae la versión anterior para que `pack` genere el parche (delta). La primera vez no hay nada: se ignora.
+      - name: Download previous release
+        continue-on-error: true
+        run: vpk download http --url ${{ env.FEED_URL }} --outputDir Releases
+
+      - name: Pack
+        run: >
+          vpk pack --packId ${{ env.PACK_ID }} --packVersion ${{ steps.v.outputs.version }}
+          --packDir publish --mainExe Iris.exe --packTitle Iris --icon Assets/Iris.ico
+          --outputDir Releases
+
+      - name: Stable installer name
+        shell: pwsh
+        run: Copy-Item (Get-ChildItem Releases -Filter '*Setup.exe' | Select-Object -First 1).FullName Releases/Iris-Setup.exe
+
+      - name: Upload to the server
+        shell: bash
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          opts="-i $HOME/.ssh/deploy_key -o StrictHostKeyChecking=accept-new"
+          # Primero paquetes e instalador; el feed (releases.win.json) al final, para que ninguna app vea una
+          # versión cuyo paquete todavía no terminó de subir.
+          scp $opts Releases/*.nupkg Releases/Iris-Setup.exe "$SSH_USER@$SSH_HOST:$DOWNLOADS_PATH/"
+          scp $opts Releases/releases.*.json "$SSH_USER@$SSH_HOST:$DOWNLOADS_PATH/"
+
+      - name: Next step
+        shell: pwsh
+        run: |
+          "### Windows ${{ steps.v.outputs.version }} publicado`n`nPara exigirla a los clientes, en **atm-iris-api**:`n`n    pnpm db:set-app-version windows ${{ steps.v.outputs.version }}`n`nInstalador: https://iris.atmosferast.com/downloads" >> $env:GITHUB_STEP_SUMMARY

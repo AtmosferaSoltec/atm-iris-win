@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using Iris.Shell;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -32,6 +33,8 @@ public sealed partial class HomePage : Page
         base.OnNavigatedTo(e);
         ViewModel.AppearCommand.Execute(null);
         ViewModel.Activate();
+        ShowWelcomeOnce();
+        _ = App.GetService<Iris.Features.Updates.UpdateGateViewModel>().CheckAsync();
         _watch = App.GetService<DataWatcher>().Watch(() => ViewModel.AppearCommand.Execute(null));
     }
 
@@ -41,6 +44,33 @@ public sealed partial class HomePage : Page
         ViewModel.Deactivate();
         _watch?.Dispose();
     }
+
+    // The welcome is shown once per person on this computer.
+    private void ShowWelcomeOnce()
+    {
+        if (App.GetService<SessionStore>().Session?.UserId is not { } userId || App.Settings.HasSeenWelcome(userId))
+        {
+            return;
+        }
+
+        WelcomeModal.CloseCommand = new RelayCommand(DismissWelcome);
+        WelcomeModal.IsOpen = true;
+    }
+
+    private void DismissWelcome()
+    {
+        if (App.GetService<SessionStore>().Session?.UserId is { } userId)
+        {
+            App.Settings.MarkWelcomeSeen(userId);
+        }
+
+        WelcomeModal.IsOpen = false;
+    }
+
+    private async void OnOpenWebClick(object sender, RoutedEventArgs e) =>
+        await Windows.System.Launcher.LaunchUriAsync(new Uri(Iris.Core.WebLinks.App));
+
+    private void OnWelcomeDismissed(object sender, RoutedEventArgs e) => DismissWelcome();
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {

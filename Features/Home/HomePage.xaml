@@ -464,5 +464,62 @@
                     Style="{StaticResource IrisPrimaryButtonStyle}" />
             </StackPanel>
         </Grid>
+
+        <!--  First-run welcome: what Iris does and where lyrics, music and media are uploaded  -->
+        <controls:IrisModal
+            x:Name="WelcomeModal"
+            Grid.RowSpan="2"
+            PanelWidth="{StaticResource IrisFormModalWidth}">
+            <StackPanel Padding="{StaticResource IrisPaddingXl}" Spacing="{StaticResource IrisSpacingLg}">
+                <StackPanel Spacing="{StaticResource IrisSpacingXs}">
+                    <TextBlock
+                        AutomationProperties.HeadingLevel="Level2"
+                        Style="{StaticResource IrisHeadlineTextStyle}"
+                        Text="Te damos la bienvenida a Iris"
+                        TextWrapping="Wrap" />
+                    <TextBlock
+                        Style="{StaticResource IrisSubtitleTextStyle}"
+                        Text="Iris proyecta letras, versículos y multimedia en la pantalla del templo, y tú diriges todo el servicio desde este computador."
+                        TextWrapping="Wrap" />
+                </StackPanel>
+
+                <StackPanel Spacing="{StaticResource IrisSpacingMd}">
+                    <StackPanel Spacing="2">
+                        <TextBlock Style="{StaticResource IrisBodyEmphasizedTextStyle}" Text="Sube tu contenido en la web" />
+                        <TextBlock
+                            Style="{StaticResource IrisCalloutTextStyle}"
+                            Text="Las letras, la música y la multimedia se suben desde la web de Iris. Aquí solo las usas."
+                            TextWrapping="Wrap" />
+                    </StackPanel>
+                    <StackPanel Spacing="2">
+                        <TextBlock Style="{StaticResource IrisBodyEmphasizedTextStyle}" Text="Aparecen aquí solas" />
+                        <TextBlock
+                            Style="{StaticResource IrisCalloutTextStyle}"
+                            Text="Lo que subas en la web se sincroniza con esta app y con el iPad."
+                            TextWrapping="Wrap" />
+                    </StackPanel>
+                    <StackPanel Spacing="2">
+                        <TextBlock Style="{StaticResource IrisBodyEmphasizedTextStyle}" Text="Dirige el servicio" />
+                        <TextBlock
+                            Style="{StaticResource IrisCalloutTextStyle}"
+                            Text="Elige el servicio, agrega lo que vas a proyectar y envíalo a la pantalla."
+                            TextWrapping="Wrap" />
+                    </StackPanel>
+                </StackPanel>
+
+                <StackPanel Spacing="{StaticResource IrisSpacingSm}">
+                    <Button
+                        HorizontalAlignment="Stretch"
+                        Click="OnOpenWebClick"
+                        Content="Abrir la web de Iris"
+                        Style="{StaticResource IrisPrimaryButtonStyle}" />
+                    <Button
+                        HorizontalAlignment="Center"
+                        Click="OnWelcomeDismissed"
+                        Content="Empezar"
+                        Style="{StaticResource IrisLinkButtonStyle}" />
+                </StackPanel>
+            </StackPanel>
+        </controls:IrisModal>
     </Grid>
 </Page>
